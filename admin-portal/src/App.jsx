@@ -233,9 +233,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-[#050816] p-4">
         <div className="w-full max-w-md glass-card rounded-3xl p-8 border border-amber-500/30 shadow-2xl shadow-amber-500/10">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-slate-950 text-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30">
-              <FaLock />
-            </div>
+            <img src="/logo.png" alt="Viral Vyapar Logo" className="w-16 h-16 object-contain mx-auto mb-4 rounded-2xl shadow-lg shadow-amber-500/20 bg-slate-900 p-1 border border-amber-500/30" />
             <h2 className="font-heading font-extrabold text-2xl text-white">Viral Vyapar Admin Portal</h2>
             <p className="text-xs text-slate-400 mt-1">Standalone Password-Protected Control Panel</p>
           </div>
@@ -287,9 +285,7 @@ function App() {
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-slate-950 text-xl font-bold">
-              <FaRocket />
-            </div>
+            <img src="/logo.png" alt="Viral Vyapar Logo" className="w-10 h-10 object-contain rounded-xl shadow-md border border-amber-500/20 bg-slate-900 p-0.5" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>

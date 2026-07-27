@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiGift, FiMail, FiPhone, FiUser, FiCheckCircle, FiStar, FiArrowRight } from 'react-icons/fi';
 import { submitLead } from '../../utils/api';
 
+// Module-level flag: resets every time website is fully reloaded/refreshed
+let isHandledInThisPageLoad = false;
+
 const LeadCaptureModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -14,15 +17,19 @@ const LeadCaptureModal = () => {
   });
 
   useEffect(() => {
-    // Check if user already dismissed or submitted lead modal
-    const leadHandled = localStorage.getItem('vv_lead_handled') || sessionStorage.getItem('vv_lead_handled');
-    if (leadHandled) {
-      return; // Do NOT show popup again if already closed or submitted
+    // Clear legacy storage items so no old persistence blocks popup
+    localStorage.removeItem('vv_lead_handled');
+    sessionStorage.removeItem('vv_lead_handled');
+
+    if (isHandledInThisPageLoad) {
+      return;
     }
 
     // Show popup automatically 6 seconds after visitor lands on site
     const timer = setTimeout(() => {
-      setIsOpen(true);
+      if (!isHandledInThisPageLoad) {
+        setIsOpen(true);
+      }
     }, 6000);
 
     return () => {
@@ -32,9 +39,7 @@ const LeadCaptureModal = () => {
 
   const handleClose = () => {
     setIsOpen(false);
-    // Store in both session & localStorage so popup never pops up again for this visitor
-    sessionStorage.setItem('vv_lead_handled', 'true');
-    localStorage.setItem('vv_lead_handled', 'true');
+    isHandledInThisPageLoad = true;
   };
 
   const handleSubmit = async (e) => {
@@ -42,10 +47,7 @@ const LeadCaptureModal = () => {
     if (!formData.email && !formData.phone) return;
 
     setLoading(true);
-
-    // Save flag immediately so modal never re-appears
-    sessionStorage.setItem('vv_lead_handled', 'true');
-    localStorage.setItem('vv_lead_handled', 'true');
+    isHandledInThisPageLoad = true;
 
     try {
       await submitLead({
@@ -72,26 +74,34 @@ const LeadCaptureModal = () => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div
+          onClick={handleClose}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+        >
           {/* Modal Container */}
           <motion.div
+            onClick={(e) => e.stopPropagation()}
             initial={{ scale: 0.85, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-orange-500/30 bg-slate-950 p-6 md:p-8 shadow-2xl shadow-orange-500/20"
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-orange-500/30 bg-slate-950 p-6 md:p-8 shadow-2xl shadow-orange-500/20 cursor-default"
           >
             {/* Background Glow */}
-            <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-orange-500/20 blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-amber-500/20 blur-3xl" />
+            <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-orange-500/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
 
             {/* Close Button */}
             <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 z-10 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900/80 border border-slate-800 transition-all hover:scale-110"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              className="absolute top-4 right-4 z-50 p-2.5 text-slate-300 hover:text-white rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-all hover:scale-110 cursor-pointer shadow-xl"
               aria-label="Close"
             >
-              <FiX className="w-5 h-5" />
+              <FiX className="w-5 h-5 text-white" />
             </button>
 
             {!submitted ? (

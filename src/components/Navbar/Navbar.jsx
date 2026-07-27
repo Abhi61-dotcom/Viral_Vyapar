@@ -55,10 +55,8 @@ const Navbar = ({ onOpenCalculator, onOpenConsultation }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-orange-500 flex items-center justify-center text-white text-xl shadow-lg shadow-violet-500/30 group-hover:scale-105 transition-transform">
-              <FaRocket className="transform group-hover:rotate-12 transition-transform" />
-            </div>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img src="/logo.png" alt="Viral Vyapar Logo" className="h-10 w-auto max-w-[45px] object-contain rounded-xl shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform" />
             <div className="flex flex-col">
               <span className="font-heading font-extrabold text-xl sm:text-2xl text-white tracking-tight leading-none">
                 VIRAL<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">VYAPAR</span>

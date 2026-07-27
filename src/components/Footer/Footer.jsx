@@ -61,10 +61,8 @@ const Footer = ({ onOpenConsultation }) => {
           
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-orange-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-violet-500/30">
-                <FaRocket />
-              </div>
+            <Link to="/" className="flex items-center gap-2.5">
+              <img src="/logo.png" alt="Viral Vyapar Logo" className="h-9 w-auto max-w-[40px] object-contain rounded-xl shadow-lg shadow-violet-500/20" />
               <span className="font-heading font-extrabold text-2xl text-white tracking-tight">
                 VIRAL<span className="text-orange-400">VYAPAR</span>
               </span>

@@ -30,28 +30,28 @@ const About = () => {
 
   const team = [
     {
-      name: "Rohan Verma",
-      role: "Co-Founder & Chief Growth Strategist",
-      bio: "Growth Marketer with 5+ years scaling D2C brands and local retail businesses.",
-      badge: "🚀 Growth Specialist"
+      name: "Vipul Thakur",
+      role: "Co-Founder & Chief Business Strategist",
+      bio: "Visionary leader driving agency expansion, strategic brand scaling, key enterprise partnerships, and high-ROI business growth frameworks.",
+      badge: "👑 Co-Founder & Director"
     },
     {
-      name: "Priya Sundaram",
-      role: "Head of Creative & Reel Strategy",
-      bio: "Creative Director who has scripted over 100+ reels generating 2.5M+ organic views across Instagram & YouTube.",
-      badge: "✨ Viral Reel Strategist"
+      name: "Kajal",
+      role: "Lead Campaign & Media Planner",
+      bio: "Creative campaign strategist expert in designing viral content roadmaps, high-converting reel hooks, content calendars, and brand positioning.",
+      badge: "✨ Senior Campaign Planner"
     },
     {
-      name: "Amitabh Roy",
-      role: "Performance Marketing Lead",
-      bio: "Google Ads & Meta Ads specialist managing performance campaigns at an average 4.2X ROAS.",
-      badge: "📊 Performance Ads Specialist"
+      name: "Abhishek Choudhary",
+      role: "Lead Full-Stack Web Developer",
+      bio: "Software engineer and web architect specializing in ultra-fast modern web apps, sleek UI/UX design, custom CRM integrations, and tech automation.",
+      badge: "💻 Lead Web Developer & Architect"
     },
     {
-      name: "Sneha Kapoor",
-      role: "Local SEO & WhatsApp Automation Lead",
-      bio: "Local search expert who has optimized over 25+ local showrooms & clinics on Google Maps.",
-      badge: "📍 GMB & CRM Specialist"
+      name: "Neha",
+      role: "Performance & Digital Marketing Specialist",
+      bio: "Data-focused digital marketer managing multi-channel Meta & Google Ads, precision audience targeting, sales funnels, and high-ROAS campaign scaling.",
+      badge: "📊 Performance Marketing Lead"
     }
   ];
 
@@ -82,19 +82,19 @@ const About = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card rounded-3xl p-6 text-center border border-slate-800">
-            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-orange-400">25+</span>
+            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-orange-400">15+</span>
             <p className="text-xs text-slate-400 font-semibold uppercase mt-1">Brands Scaled</p>
           </div>
           <div className="glass-card rounded-3xl p-6 text-center border border-slate-800">
-            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-violet-400">2.5M+</span>
+            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-violet-400">450K+</span>
             <p className="text-xs text-slate-400 font-semibold uppercase mt-1">Organic Reel Views</p>
           </div>
           <div className="glass-card rounded-3xl p-6 text-center border border-slate-800">
-            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-emerald-400">4.2X</span>
+            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-emerald-400">3.2X</span>
             <p className="text-xs text-slate-400 font-semibold uppercase mt-1">Average Client ROAS</p>
           </div>
           <div className="glass-card rounded-3xl p-6 text-center border border-slate-800">
-            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-amber-400">98%</span>
+            <span className="font-heading font-extrabold text-3xl sm:text-4xl text-amber-400">95%</span>
             <p className="text-xs text-slate-400 font-semibold uppercase mt-1">Client Satisfaction</p>
           </div>
         </div>

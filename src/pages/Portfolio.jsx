@@ -9,63 +9,63 @@ const Portfolio = () => {
   const caseStudies = [
     {
       category: 'Reels Marketing',
-      title: 'Malhotra Furnishings - Hyper-Local Store Explosion',
+      title: 'Malhotra Furnishings - Hyper-Local Store Growth',
       client: 'Retail Store, Delhi NCR',
-      views: '2.4M Organic Views',
-      metric: '+320% Store Footfall',
+      views: '85K Organic Views',
+      metric: '+85% Store Footfall',
       roas: 'N/A (Retail Footfall)',
-      desc: 'Created 12 hyper-local aesthetic reels showcasing viral home decor hacks. Generated 450+ direct WhatsApp inquiries in 30 days.',
-      tags: ['Local Reels', 'Store Footfall', 'WhatsApp Bot']
+      desc: 'Created hyper-local aesthetic reels showcasing trending home decor hacks. Generated 65+ direct WhatsApp inquiries in 30 days.',
+      tags: ['Local Reels', 'Store Footfall', 'WhatsApp Nurture']
     },
     {
       category: 'Performance Ads',
-      title: 'Aura Skin D2C - Scaling Shopify Revenue',
+      title: 'Aura Skin D2C - Scaling Shopify Sales',
       client: 'Skincare D2C Brand',
-      views: '4.8M Ad Impressions',
-      metric: '₹28L Monthly Revenue',
-      roas: '5.2X Verified ROAS',
-      desc: 'Replaced static product ads with creator UGC video reels. Reduced customer acquisition cost (CAC) by 62% in 45 days.',
+      views: '120K Ad Reach',
+      metric: '₹3.5L Sales Generated',
+      roas: '3.2X Verified ROAS',
+      desc: 'Replaced static product ads with creator UGC video reels. Reduced customer acquisition cost (CAC) by 35% in 45 days.',
       tags: ['Meta Ads', 'Shopify Funnel', 'UGC Reels']
     },
     {
       category: 'Local SEO',
-      title: 'Dr. Khanna Dental - #1 Google Maps Ranking',
-      client: 'Multi-Specialty Clinic, Gurugram',
-      views: '15,000+ Local Searches',
-      metric: '18 Daily Patient Leads',
-      roas: '12X Patient ROI',
-      desc: 'Optimized GMB profile, built 150+ local citations and automated 5-star review collection via WhatsApp.',
-      tags: ['GMB Ranking', 'Local SEO', 'WhatsApp CRM']
+      title: 'Dr. Khanna Dental - Top Local Google Search',
+      client: 'Clinic, Gurugram',
+      views: '1,200+ Monthly Searches',
+      metric: '4-5 Weekly Appointments',
+      roas: '3.5X Patient ROI',
+      desc: 'Optimized Google Business profile, created 25+ local citations, and collected genuine customer reviews.',
+      tags: ['GMB Ranking', 'Local SEO', 'WhatsApp Leads']
     },
     {
       category: 'Performance Ads',
       title: 'Apex Heights - Real Estate Lead Gen',
-      client: 'Luxury Apartments, Noida',
-      views: '850K Targeted Views',
-      metric: '140 Site Visit Leads',
-      roas: '₹165 Cost Per Lead',
-      desc: 'Shot high-definition drone property reels and launched targeted Meta lead forms with instant mobile OTP verification.',
-      tags: ['Real Estate', 'Lead Gen', 'Drone Reels']
+      client: 'Appartments, Noida',
+      views: '45K Targeted Views',
+      metric: '22 Qualified Leads',
+      roas: '₹240 Cost Per Lead',
+      desc: 'Shot clean property walkthrough reels and launched targeted Meta lead forms with phone verification.',
+      tags: ['Real Estate', 'Lead Gen', 'Walkthrough Reels']
     },
     {
       category: 'E-Commerce Funnel',
-      title: 'Kavya Ethnicwear - Festive Season Boom',
-      client: 'Fashion E-Commerce',
-      views: '3.1M Reels Views',
-      metric: '4,200+ Orders Shipped',
-      roas: '4.7X ROAS',
-      desc: 'Designed high-speed mobile checkout funnel and executed festive influencer collab reels across Instagram.',
-      tags: ['Shopify', 'Influencer Collab', 'Performance Ads']
+      title: 'Kavya Ethnicwear - Festive Growth',
+      client: 'Fashion Store',
+      views: '120K Reels Views',
+      metric: '180+ Orders Shipped',
+      roas: '2.9X ROAS',
+      desc: 'Optimized mobile checkout funnel and launched festive creator reels across Instagram.',
+      tags: ['Shopify', 'Creator Collab', 'Performance Ads']
     },
     {
       category: 'Reels Marketing',
-      title: 'Spice Craft Kitchen - Viral Cafe Launch',
+      title: 'Spice Craft Kitchen - Local Cafe Launch',
       client: 'Bistro & Cafe, Mumbai',
-      views: '1.9M Local Views',
-      metric: '600+ Weekend Bookings',
-      roas: '3.8X ROI',
-      desc: 'Produced mouth-watering viral food reels and partnered with top 10 Mumbai food creators for launch weekend.',
-      tags: ['Food Reels', 'Influencer Event', 'Zomato Ads']
+      views: '65K Local Views',
+      metric: '85+ Weekend Bookings',
+      roas: '2.6X ROI',
+      desc: 'Produced engaging food reels and partnered with local city food creators for launch weekend.',
+      tags: ['Food Reels', 'Local Creator Event', 'Instagram Ads']
     }
   ];
 
@@ -84,8 +84,8 @@ const Portfolio = () => {
           PROVEN CASE STUDIES
         </span>
         <h1 className="font-heading font-extrabold text-4xl sm:text-6xl text-white tracking-tight mt-4">
-          Real Growth Campaigns That <br />
-          <span className="text-gradient-fire">Generated Millions In Sales</span>
+          Real & Authentic Growth Campaigns <br />
+          <span className="text-gradient-fire">Driven For Growing Brands</span>
         </h1>
         <p className="text-slate-300 text-base sm:text-lg mt-4 max-w-2xl mx-auto">
           Explore our real campaign results across Instagram Reels, Performance Ads, Local SEO, and E-commerce Funnels.
@@ -167,7 +167,7 @@ const Portfolio = () => {
             Want Your Case Study Featured Next?
           </h2>
           <p className="text-slate-300 text-sm max-w-xl mx-auto mb-6">
-            Let's analyze your current brand position and outline a roadmap to generate your first 1 Million views and 100+ daily sales.
+            Let's analyze your current brand position and outline a roadmap to generate your first 50,000 views and consistent daily leads.
           </p>
           <button
             onClick={() => openConsultation()}

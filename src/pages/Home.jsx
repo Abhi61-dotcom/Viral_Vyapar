@@ -325,9 +325,9 @@ const Home = () => {
 
             {/* Trust Badges */}
             <motion.div variants={fadeInUp} className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-medium">
-              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 25+ Businesses Scaled</span>
-              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 2.5M+ Organic Views</span>
-              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 3.8X - 5.2X Average Client ROAS</span>
+              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 15+ Brands Scaled</span>
+              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 450K+ Organic Views</span>
+              <span className="flex items-center gap-1.5"><FaCheckCircle className="text-emerald-400" /> 2.8X - 3.5X Average Client ROAS</span>
             </motion.div>
 
           </motion.div>
@@ -352,10 +352,10 @@ const Home = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               {[
-                { title: 'Total Video Views', value: '2,45,800+', note: '+180% organic reach', color: 'text-orange-400', icon: <FaChartLine /> },
-                { title: 'Qualified Leads', value: '1,450+', note: 'Instant WhatsApp delivery', color: 'text-violet-400', icon: <FaCheckCircle /> },
-                { title: 'Avg Ad ROAS', value: '4.20X', note: 'Verified returns', color: 'text-emerald-400', icon: <FaCoins /> },
-                { title: 'Client Revenue', value: '₹25.5 Lakhs+', note: 'Scaled across Delhi NCR & India', color: 'text-amber-400', icon: <FaFire /> },
+                { title: 'Total Video Views', value: '85,400+', note: '+65% organic reach', color: 'text-orange-400', icon: <FaChartLine /> },
+                { title: 'Qualified Leads', value: '240+', note: 'Instant WhatsApp delivery', color: 'text-violet-400', icon: <FaCheckCircle /> },
+                { title: 'Avg Ad ROAS', value: '3.20X', note: 'Verified returns', color: 'text-emerald-400', icon: <FaCoins /> },
+                { title: 'Client Revenue', value: '₹4.5 Lakhs+', note: 'Scaled across local businesses', color: 'text-amber-400', icon: <FaFire /> },
               ].map((stat, idx) => (
                 <motion.div
                   key={idx}
