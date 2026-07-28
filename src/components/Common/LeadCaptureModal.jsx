@@ -25,12 +25,12 @@ const LeadCaptureModal = () => {
       return;
     }
 
-    // Show popup automatically 6 seconds after visitor lands on site
+    // Show popup automatically 12 seconds after visitor lands on site
     const timer = setTimeout(() => {
       if (!isHandledInThisPageLoad) {
         setIsOpen(true);
       }
-    }, 6000);
+    }, 12000);
 
     return () => {
       clearTimeout(timer);

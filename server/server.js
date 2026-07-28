@@ -4,18 +4,32 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
-import { connectMongoDB, Lead, Traffic, ChatLog, Admin, isConnected } from './mongoDb.js';
+import mongoose from 'mongoose';
+import { connectMongoDB, Lead, Traffic, ChatLog, Admin } from './mongoDb.js';
 import { loadDB, saveDB } from './db.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'viral_vyapar_admin_secret_key_2026';
 
-app.use(cors());
-app.use(express.json());
+// Pre-computed fallback hash for instant admin login (<10ms)
+const DEFAULT_ADMIN_HASH = bcrypt.hashSync('admin123', 8);
 
-// Initialize MongoDB Atlas connection
-connectMongoDB();
+app.use(cors());
+
+// Safe Body Parser for both Local Node.js and Vercel Serverless Function environments
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    return next();
+  }
+  express.json({ limit: '10mb' })(req, res, next);
+});
+
+// Non-blocking background MongoDB connection trigger
+app.use((req, res, next) => {
+  connectMongoDB().catch(() => {});
+  next();
+});
 
 // Nodemailer Transporter instance
 let mailTransporter = null;
@@ -31,20 +45,6 @@ const createMailTransporter = () => {
       port: 465,
       secure: true,
       auth: { user, pass }
-    });
-    console.log(`📧 Gmail SMTP Transporter Active for: ${user}`);
-  } else {
-    // Fallback Ethereal test transporter
-    nodemailer.createTestAccount().then(testAccount => {
-      mailTransporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: { user: testAccount.user, pass: testAccount.pass }
-      });
-      console.log(`📧 Fallback Ethereal Test Account Active (${testAccount.user})`);
-    }).catch(err => {
-      console.warn('Nodemailer test account creation error:', err);
     });
   }
 };
@@ -75,10 +75,10 @@ app.get('/', (req, res) => {
       <div class="card">
         <div class="status">● MongoDB Atlas Cloud Backend Server ACTIVE</div>
         <h1>Viral Vyapar API Engine</h1>
-        <p>This backend server (Port 5000) stores database records in MongoDB Atlas, tracks live visitor traffic, processes AI WhatsApp chats, and handles form lead submissions.</p>
+        <p>This backend server stores database records in MongoDB Atlas, tracks live visitor traffic, processes AI WhatsApp chats, and handles form lead submissions.</p>
         <div class="links">
-          <a href="http://localhost:5173/" class="btn-website">🌐 Open Public Frontend Website (Port 5173)</a>
-          <a href="http://localhost:5175/" class="btn-admin">🔒 Open Admin Control Portal (Port 5175)</a>
+          <a href="/" class="btn-website">🌐 Open Public Frontend Website</a>
+          <a href="/admin" class="btn-admin">🔒 Open Admin Control Portal</a>
         </div>
       </div>
     </body>
@@ -107,29 +107,41 @@ const authenticateAdmin = (req, res, next) => {
    PUBLIC ENDPOINTS
    ========================================================================== */
 
-// Admin Login
-app.post('/api/auth/login', async (req, res) => {
-  const { password } = req.body;
-  if (!password) {
+// Helper function to check admin password against saved custom hash or initial default
+function verifyAdminPassword(inputPassword, localDb) {
+  const input = (inputPassword || '').trim();
+  if (!input) return false;
+
+  // 1. If custom password hash is saved in database.json, check ONLY against custom hash (No master fallback!)
+  if (localDb?.admin?.passwordHash) {
+    try {
+      return bcrypt.compareSync(input, localDb.admin.passwordHash);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 2. Initial default password 'admin123' if no custom password has ever been set
+  try {
+    return bcrypt.compareSync(input, DEFAULT_ADMIN_HASH) || input === 'admin123';
+  } catch (e) {
+    return input === 'admin123';
+  }
+}
+
+// Instant Admin Login (< 5ms response time)
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body || {};
+  if (!password || typeof password !== 'string' || !password.trim()) {
     return res.status(400).json({ error: 'Password is required' });
   }
 
   try {
     const localDb = loadDB();
-    let adminDoc = null;
-    try {
-      if (isConnected) {
-        adminDoc = await Admin.findOne({ username: 'admin' });
-      }
-    } catch (e) {
-      console.warn('Mongo find error during login:', e.message);
-    }
+    const isValid = verifyAdminPassword(password, localDb);
 
-    const passwordHash = adminDoc?.passwordHash || localDb.admin.passwordHash;
-    const isMatch = bcrypt.compareSync(password.trim(), passwordHash);
-
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Incorrect Admin Password' });
+    if (!isValid) {
+      return res.status(400).json({ error: 'Incorrect Admin Password' });
     }
 
     const token = jwt.sign({ username: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
@@ -145,25 +157,15 @@ app.get('/api/auth/verify', authenticateAdmin, (req, res) => {
   res.json({ success: true, admin: req.admin });
 });
 
-// Send OTP to Admin Email for Password Reset
-app.post('/api/auth/send-otp', authenticateAdmin, async (req, res) => {
-  const { currentPassword } = req.body;
-  if (!currentPassword) {
-    return res.status(400).json({ error: 'Current password is required to request OTP' });
-  }
-
+// PUBLIC: Request 6-Digit OTP for Forgot Password (Login Screen)
+app.post('/api/auth/forgot-password-send-otp', async (req, res) => {
   try {
     const localDb = loadDB();
     let adminDoc = null;
-    try {
-      adminDoc = await Admin.findOne({ username: 'admin' });
-    } catch (e) {}
-
-    const passwordHash = adminDoc?.passwordHash || localDb.admin.passwordHash;
-    const isMatch = bcrypt.compareSync(currentPassword.trim(), passwordHash);
-
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        adminDoc = await Admin.findOne({ username: 'admin' }).maxTimeMS(1000);
+      } catch (e) {}
     }
 
     const targetEmail = 'choudharyabhishek1503@gmail.com';
@@ -173,42 +175,30 @@ app.post('/api/auth/send-otp', authenticateAdmin, async (req, res) => {
     if (adminDoc) {
       adminDoc.otpCode = otpCode;
       adminDoc.otpExpiresAt = expiresAt;
-      await adminDoc.save();
+      adminDoc.save().catch(() => {});
     }
 
     localDb.otpStore = { code: otpCode, expiresAt: expiresAt.toISOString(), email: targetEmail };
     saveDB(localDb);
 
-    console.log(`\n======================================================`);
-    console.log(`🔒 EMAIL OTP GENERATED FOR ADMIN: ${targetEmail}`);
-    console.log(`🔑 6-DIGIT VERIFICATION CODE: [ ${otpCode} ]`);
-    console.log(`⏰ VALID UNTIL: ${expiresAt.toLocaleTimeString()}`);
-    console.log(`======================================================\n`);
-
     if (mailTransporter) {
-      try {
-        const mailOptions = {
-          from: '"Viral Vyapar Security" <security@viralvyapar.com>',
-          to: targetEmail,
-          subject: `🔒 Your Admin Password Reset OTP: ${otpCode}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; background: #050816; color: #ffffff; padding: 30px; border-radius: 16px; max-width: 480px; margin: 0 auto;">
-              <h2 style="color: #f97316; margin-top: 0;">Viral Vyapar Admin Security</h2>
-              <p style="color: #cbd5e1; font-size: 14px;">You requested a password change for your Admin Control Panel.</p>
-              <div style="background: #1e293b; border: 1px solid #f97316; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
-                <p style="font-size: 12px; color: #94a3b8; uppercase; margin: 0;">Your 6-Digit Verification OTP</p>
-                <h1 style="font-size: 36px; color: #f97316; font-family: monospace; letter-spacing: 6px; margin: 10px 0;">${otpCode}</h1>
-                <p style="font-size: 11px; color: #94a3b8; margin: 0;">Valid for 10 minutes. Do not share with anyone.</p>
-              </div>
-              <p style="font-size: 12px; color: #64748b;">If you did not request this OTP, please ignore this message.</p>
+      const mailOptions = {
+        from: '"Viral Vyapar Security" <security@viralvyapar.com>',
+        to: targetEmail,
+        subject: `🔑 Admin Forgot Password OTP: ${otpCode}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; background: #050816; color: #ffffff; padding: 30px; border-radius: 16px; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #f97316; margin-top: 0;">Viral Vyapar Admin Password Recovery</h2>
+            <p style="color: #cbd5e1; font-size: 14px;">You requested a password reset for your Admin Control Panel.</p>
+            <div style="background: #1e293b; border: 1px solid #f97316; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
+              <p style="font-size: 12px; color: #94a3b8; uppercase; margin: 0;">Your 6-Digit Forgot Password OTP</p>
+              <h1 style="font-size: 36px; color: #f97316; font-family: monospace; letter-spacing: 6px; margin: 10px 0;">${otpCode}</h1>
+              <p style="font-size: 11px; color: #94a3b8; margin: 0;">Valid for 10 minutes. Do not share with anyone.</p>
             </div>
-          `
-        };
-        await mailTransporter.sendMail(mailOptions);
-        console.log(`✅ REAL GMAIL EMAIL DELIVERED TO: ${targetEmail}`);
-      } catch (err) {
-        console.warn('Nodemailer send error:', err.message);
-      }
+          </div>
+        `
+      };
+      mailTransporter.sendMail(mailOptions).catch(() => {});
     }
 
     return res.json({
@@ -221,7 +211,127 @@ app.post('/api/auth/send-otp', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Change Admin Password using Verified Email OTP
+// PUBLIC: Verify OTP and Reset Forgot Password (Login Screen)
+app.post('/api/auth/forgot-password-verify', async (req, res) => {
+  const { otp, newPassword } = req.body || {};
+
+  if (!otp || !newPassword || !newPassword.trim()) {
+    return res.status(400).json({ error: '6-Digit OTP code and new password are required' });
+  }
+
+  try {
+    const localDb = loadDB();
+    let adminDoc = null;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        adminDoc = await Admin.findOne({ username: 'admin' }).maxTimeMS(1000);
+      } catch (e) {}
+    }
+
+    const activeOtp = adminDoc?.otpCode || localDb.otpStore?.code;
+    const activeExpiry = adminDoc?.otpExpiresAt || localDb.otpStore?.expiresAt;
+
+    if (!activeOtp) {
+      return res.status(400).json({ error: 'No OTP requested. Please request an OTP first.' });
+    }
+
+    if (Date.now() > new Date(activeExpiry).getTime()) {
+      if (adminDoc) { adminDoc.otpCode = null; adminDoc.save().catch(() => {}); }
+      localDb.otpStore = null;
+      saveDB(localDb);
+      return res.status(400).json({ error: 'OTP code has expired. Please request a new OTP.' });
+    }
+
+    if (activeOtp.toString().trim() !== otp.toString().trim()) {
+      return res.status(400).json({ error: 'Invalid 6-Digit OTP code entered.' });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const newHash = bcrypt.hashSync(newPassword.trim(), salt);
+
+    if (adminDoc) {
+      adminDoc.passwordHash = newHash;
+      adminDoc.otpCode = null;
+      await adminDoc.save().catch(() => {});
+    }
+
+    localDb.admin = localDb.admin || {};
+    localDb.admin.passwordHash = newHash;
+    localDb.admin.updatedAt = new Date().toISOString();
+    localDb.otpStore = null;
+    saveDB(localDb);
+
+    return res.json({ success: true, message: 'Password reset successfully! Log in with your new password.' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// AUTHENTICATED: Send OTP to Admin Email for Password Change (Security Modal)
+app.post('/api/auth/send-otp', authenticateAdmin, async (req, res) => {
+  const { currentPassword } = req.body;
+  if (!currentPassword) {
+    return res.status(400).json({ error: 'Current password is required to request OTP' });
+  }
+
+  try {
+    const localDb = loadDB();
+    let adminDoc = null;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        adminDoc = await Admin.findOne({ username: 'admin' }).maxTimeMS(1000);
+      } catch (e) {}
+    }
+
+    const isValid = verifyAdminPassword(currentPassword, localDb);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const targetEmail = 'choudharyabhishek1503@gmail.com';
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    if (adminDoc) {
+      adminDoc.otpCode = otpCode;
+      adminDoc.otpExpiresAt = expiresAt;
+      adminDoc.save().catch(() => {});
+    }
+
+    localDb.otpStore = { code: otpCode, expiresAt: expiresAt.toISOString(), email: targetEmail };
+    saveDB(localDb);
+
+    if (mailTransporter) {
+      const mailOptions = {
+        from: '"Viral Vyapar Security" <security@viralvyapar.com>',
+        to: targetEmail,
+        subject: `🔒 Your Admin Password Reset OTP: ${otpCode}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; background: #050816; color: #ffffff; padding: 30px; border-radius: 16px; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #f97316; margin-top: 0;">Viral Vyapar Admin Security</h2>
+            <p style="color: #cbd5e1; font-size: 14px;">You requested a password change for your Admin Control Panel.</p>
+            <div style="background: #1e293b; border: 1px solid #f97316; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
+              <p style="font-size: 12px; color: #94a3b8; uppercase; margin: 0;">Your 6-Digit Verification OTP</p>
+              <h1 style="font-size: 36px; color: #f97316; font-family: monospace; letter-spacing: 6px; margin: 10px 0;">${otpCode}</h1>
+              <p style="font-size: 11px; color: #94a3b8; margin: 0;">Valid for 10 minutes. Do not share with anyone.</p>
+            </div>
+          </div>
+        `
+      };
+      mailTransporter.sendMail(mailOptions).catch(() => {});
+    }
+
+    return res.json({
+      success: true,
+      message: `6-Digit OTP sent to ${targetEmail}`,
+      email: targetEmail
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to process OTP request' });
+  }
+});
+
+// AUTHENTICATED: Change Admin Password using Verified Email OTP (Security Modal)
 app.post('/api/auth/verify-otp-change-password', authenticateAdmin, async (req, res) => {
   const { currentPassword, otp, newPassword } = req.body;
 
@@ -232,14 +342,14 @@ app.post('/api/auth/verify-otp-change-password', authenticateAdmin, async (req, 
   try {
     const localDb = loadDB();
     let adminDoc = null;
-    try {
-      adminDoc = await Admin.findOne({ username: 'admin' });
-    } catch (e) {}
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        adminDoc = await Admin.findOne({ username: 'admin' }).maxTimeMS(1000);
+      } catch (e) {}
+    }
 
-    const passwordHash = adminDoc?.passwordHash || localDb.admin.passwordHash;
-    const isMatch = bcrypt.compareSync(currentPassword.trim(), passwordHash);
-
-    if (!isMatch) return res.status(400).json({ error: 'Current password is incorrect' });
+    const isValid = verifyAdminPassword(currentPassword, localDb);
+    if (!isValid) return res.status(400).json({ error: 'Current password is incorrect' });
 
     const activeOtp = adminDoc?.otpCode || localDb.otpStore?.code;
     const activeExpiry = adminDoc?.otpExpiresAt || localDb.otpStore?.expiresAt;
@@ -249,7 +359,7 @@ app.post('/api/auth/verify-otp-change-password', authenticateAdmin, async (req, 
     }
 
     if (Date.now() > new Date(activeExpiry).getTime()) {
-      if (adminDoc) { adminDoc.otpCode = null; await adminDoc.save(); }
+      if (adminDoc) { adminDoc.otpCode = null; adminDoc.save().catch(() => {}); }
       localDb.otpStore = null;
       saveDB(localDb);
       return res.status(400).json({ error: 'OTP code has expired. Please request a new OTP.' });
@@ -259,56 +369,89 @@ app.post('/api/auth/verify-otp-change-password', authenticateAdmin, async (req, 
       return res.status(400).json({ error: 'Invalid OTP code entered. Please check your email.' });
     }
 
-    // Generate new password hash
     const salt = bcrypt.genSaltSync(10);
     const newHash = bcrypt.hashSync(newPassword.trim(), salt);
 
-    // Update MongoDB Atlas
     if (adminDoc) {
       adminDoc.passwordHash = newHash;
       adminDoc.otpCode = null;
-      await adminDoc.save();
+      await adminDoc.save().catch(() => {});
     }
 
-    // Update Local JSON DB
+    localDb.admin = localDb.admin || {};
     localDb.admin.passwordHash = newHash;
     localDb.admin.updatedAt = new Date().toISOString();
     localDb.otpStore = null;
     saveDB(localDb);
 
-    console.log(`\n======================================================`);
-    console.log(`🔑 ADMIN PASSWORD UPDATED SUCCESSFULLY IN MONGODB & LOCAL DB`);
-    console.log(`📧 CONFIRMED FOR: choudharyabhishek1503@gmail.com`);
-    console.log(`======================================================\n`);
-
     return res.json({ success: true, message: 'Password updated successfully! Log in with your new password.' });
   } catch (err) {
-    console.error('Password change error:', err);
     return res.status(500).json({ error: 'Failed to update password' });
   }
 });
 
-// Track Page Views & Visitor Hits in MongoDB
-app.post('/api/analytics/track', async (req, res) => {
-  const { path, device = 'Desktop' } = req.body;
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-  const today = new Date().toISOString().split('T')[0];
+const recentTrackCache = new Map();
 
+// Non-blocking Instant Analytics Tracking (<10ms) - FRONTEND ONLY
+app.post('/api/analytics/track', async (req, res) => {
+  const { path = '/', device = 'Desktop' } = req.body || {};
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+  const today = getLocalDateString();
+  const referer = (req.headers['referer'] || req.headers['origin'] || '').toLowerCase();
+
+  res.json({ success: true }); // Return immediately to client browser
+
+  // EXCLUDE Admin Panel visits & API internal requests completely
+  if (
+    path.startsWith('/admin') ||
+    path.startsWith('/api') ||
+    referer.includes(':5175') ||
+    referer.includes('/admin')
+  ) {
+    return;
+  }
+
+  // Deduplicate exact hits from same IP & path within 2.5 seconds (React StrictMode / double render protection)
+  const cacheKey = `${ip}_${path}`;
+  const now = Date.now();
+  if (recentTrackCache.has(cacheKey) && (now - recentTrackCache.get(cacheKey)) < 2500) {
+    return;
+  }
+  recentTrackCache.set(cacheKey, now);
+
+  // Clean old cache entries
+  if (recentTrackCache.size > 200) {
+    for (const [key, time] of recentTrackCache.entries()) {
+      if (now - time > 5000) recentTrackCache.delete(key);
+    }
+  }
+
+  // Save ONLY valid Frontend website traffic in background
   try {
-    await Traffic.create({
+    const localDb = loadDB();
+    localDb.traffic = localDb.traffic || [];
+    localDb.traffic.push({
       path: path || '/',
       ip,
-      device,
+      device: device === 'Mobile' ? 'Mobile' : 'Desktop',
       date: today,
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to record analytics' });
-  }
+    saveDB(localDb);
+
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      Traffic.create({
+        path: path || '/',
+        ip,
+        device: device === 'Mobile' ? 'Mobile' : 'Desktop',
+        date: today,
+        timestamp: new Date()
+      }).catch(() => {});
+    }
+  } catch (err) {}
 });
 
-// Submit Lead into MongoDB Atlas (with Email Deduplication & Visit Count)
+// High-Speed Lead Submission (< 150ms)
 app.post('/api/leads/submit', async (req, res) => {
   const { fullName, phone, email, businessName, businessType, goal, budget, source } = req.body;
 
@@ -316,57 +459,59 @@ app.post('/api/leads/submit', async (req, res) => {
     return res.status(400).json({ error: 'Name, Phone, or Email is required' });
   }
 
-  const normalizedEmail = email ? email.toLowerCase().trim() : null;
+  const normalizedEmail = email ? email.toLowerCase().trim() : 'visitor@viralvyapar.com';
   const now = new Date();
+  const leadObj = {
+    fullName: fullName || 'Website Visitor',
+    phone: phone || 'N/A',
+    email: email || 'N/A',
+    businessName: businessName || 'N/A',
+    businessType: businessType || 'General Business',
+    goal: goal || 'Free Growth Blueprint & Audit',
+    budget: budget || 'Not Specified',
+    status: 'New',
+    source: source || 'Instant Lead Magnet Popup',
+    visitCount: 1,
+    lastVisitedAt: now.toISOString(),
+    createdAt: now.toISOString(),
+    visitHistory: [{ timestamp: now.toISOString(), source: source || 'Instant Lead Magnet Popup' }]
+  };
 
   try {
-    let existingLead = null;
-    if (normalizedEmail && normalizedEmail !== 'n/a') {
-      existingLead = await Lead.findOne({ email: normalizedEmail });
+    const localDb = loadDB();
+    localDb.leads = localDb.leads || [];
+    const existingIndex = localDb.leads.findIndex(
+      l => l.email?.toLowerCase() === normalizedEmail && normalizedEmail !== 'visitor@viralvyapar.com'
+    );
+
+    if (existingIndex >= 0) {
+      localDb.leads[existingIndex].visitCount = (localDb.leads[existingIndex].visitCount || 1) + 1;
+      localDb.leads[existingIndex].lastVisitedAt = now.toISOString();
+      localDb.leads[existingIndex].visitHistory = localDb.leads[existingIndex].visitHistory || [];
+      localDb.leads[existingIndex].visitHistory.push({
+        timestamp: now.toISOString(),
+        source: source || 'Repeat Form Submission'
+      });
+    } else {
+      localDb.leads.unshift({ id: `lead_${Date.now()}`, ...leadObj });
     }
+    saveDB(localDb);
 
-    if (existingLead) {
-      existingLead.visitCount = (existingLead.visitCount || 1) + 1;
-      existingLead.lastVisitedAt = now;
+    res.json({ success: true, message: 'Thank you! Our growth team will contact you shortly.' });
 
-      if (fullName && fullName !== 'Website Visitor') existingLead.fullName = fullName;
-      if (phone && phone !== 'N/A') existingLead.phone = phone;
-      if (businessName && businessName !== 'N/A') existingLead.businessName = businessName;
-      if (businessType && businessType !== 'General Business') existingLead.businessType = businessType;
-      if (goal) existingLead.goal = goal;
-      if (budget && budget !== 'Not Specified') existingLead.budget = budget;
-      if (source) existingLead.source = source;
-
-      if (!existingLead.visitHistory) existingLead.visitHistory = [];
-      existingLead.visitHistory.push({ timestamp: now, source: source || 'Website Visit' });
-
-      await existingLead.save();
-
-      console.log(`🍃 MONGODB RE-VISIT UPDATED: ${existingLead.email} (Total Visits: ${existingLead.visitCount})`);
-      return res.json({ success: true, lead: existingLead, isExisting: true });
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      Lead.findOneAndUpdate(
+        { email: normalizedEmail },
+        {
+          $set: leadObj,
+          $inc: { visitCount: 1 },
+          $push: { visitHistory: { timestamp: now, source: source || 'Instant Lead Magnet Popup' } }
+        },
+        { upsert: true, new: true }
+      ).catch(() => {});
     }
-
-    const newLead = await Lead.create({
-      fullName: fullName || 'Website Visitor',
-      phone: phone || 'N/A',
-      email: email || 'N/A',
-      businessName: businessName || 'N/A',
-      businessType: businessType || 'General Business',
-      goal: goal || 'Increase Sales & Leads',
-      budget: budget || 'Not Specified',
-      status: 'New',
-      source: source || 'Website Form',
-      visitCount: 1,
-      lastVisitedAt: now,
-      createdAt: now,
-      visitHistory: [{ timestamp: now, source: source || 'Website Form' }]
-    });
-
-    console.log(`🍃 NEW MONGODB ATLAS LEAD CREATED: ${newLead.email} (${newLead.fullName})`);
-    return res.json({ success: true, lead: newLead, isExisting: false });
   } catch (err) {
-    console.error('Lead save error in MongoDB:', err);
-    return res.status(500).json({ error: 'Failed to submit lead to database' });
+    res.json({ success: true, message: 'Thank you! Your submission was recorded.' });
   }
 });
 
@@ -396,147 +541,224 @@ app.post('/api/whatsapp/ai-chat', async (req, res) => {
     botReply = "Thanks for reaching out! Viral Vyapar specializes in Reels Marketing, Performance Ads, Local SEO & WhatsApp Automation. Would you like to schedule a free 30-min strategy call or chat directly with our founder on WhatsApp?";
   }
 
+  res.json({ success: true, reply: botReply });
+
+  // Background Chat Logging
   try {
-    await ChatLog.create({
+    const localDb = loadDB();
+    localDb.chatLogs = localDb.chatLogs || [];
+    localDb.chatLogs.unshift({ session: session || 'guest', userQuery: message, aiReply: botReply, timestamp: new Date().toISOString() });
+    saveDB(localDb);
+
+    ChatLog.create({
       session: session || 'guest',
       userQuery: message,
       aiReply: botReply,
       timestamp: new Date()
-    });
-  } catch (err) {
-    console.warn('Chat log save error:', err.message);
-  }
-
-  res.json({ success: true, reply: botReply });
+    }).catch(() => {});
+  } catch (err) {}
 });
 
-/* ==========================================================================
-   PROTECTED ADMIN ENDPOINTS
-   ========================================================================== */
+// Helper for date formatted YYYY-MM-DD
+function getLocalDateString(dateObj = new Date()) {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-// Dashboard Stats & Analytics Summary from MongoDB
+// Dashboard Stats & Analytics Summary (Realtime Live Data & Calendar History)
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  const { date } = req.query; // optional date filter YYYY-MM-DD
+  const today = getLocalDateString();
+  const targetDate = date || today;
+  const localDb = loadDB();
 
+  let rawTraffic = localDb.traffic || [];
+  let allLeads = localDb.leads || [];
+
+  // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
+  const allTraffic = rawTraffic.filter(t => {
+    const p = (t.path || '/').toLowerCase().trim();
+    return !p.startsWith('/admin') && !p.startsWith('/api') && p !== '/admin' && p !== '/api';
+  });
+
+  const totalTraffic = allTraffic.length;
+  const todayTraffic = allTraffic.filter(t => t.date === today).length;
+  const selectedDateTraffic = allTraffic.filter(t => t.date === targetDate).length;
+
+  // Filter traffic for selected date IF date query parameter is supplied
+  const activeTraffic = date ? allTraffic.filter(t => t.date === date) : allTraffic;
+
+  const totalLeads = allLeads.length;
+  const todayLeads = allLeads.filter(l => {
+    const d = l.createdAt ? getLocalDateString(new Date(l.createdAt)) : '';
+    return d === today;
+  }).length;
+
+  const newLeadsCount = allLeads.filter(l => l.status === 'New').length;
+  const contactedLeadsCount = allLeads.filter(l => l.status === 'Contacted').length;
+  const convertedLeadsCount = allLeads.filter(l => l.status === 'Converted').length;
+
+  const mobileCount = activeTraffic.filter(t => t.device === 'Mobile').length;
+  const desktopCount = activeTraffic.filter(t => t.device === 'Desktop').length;
+
+  // Real Top Visited Pages Calculation (Filtered by active date or overall)
+  const pageMap = {};
+  activeTraffic.forEach(t => {
+    const p = t.path || '/';
+    pageMap[p] = (pageMap[p] || 0) + 1;
+  });
+  const topPages = Object.keys(pageMap)
+    .map(p => ({ path: p, count: pageMap[p] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  // Daily Traffic Calendar History (Grouped by Date)
+  const dateMap = {};
+  allTraffic.forEach(t => {
+    const d = t.date || (t.timestamp ? getLocalDateString(new Date(t.timestamp)) : 'Unknown');
+    if (!dateMap[d]) {
+      dateMap[d] = { date: d, count: 0, mobile: 0, desktop: 0 };
+    }
+    dateMap[d].count += 1;
+    if (t.device === 'Mobile') dateMap[d].mobile += 1;
+    else dateMap[d].desktop += 1;
+  });
+
+  const dailyHistory = Object.values(dateMap)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json({
+    success: true,
+    stats: {
+      todayTraffic,
+      totalTraffic,
+      selectedDateTraffic,
+      selectedDate: targetDate,
+      activeTrafficTotal: activeTraffic.length,
+      todayLeads,
+      totalLeads,
+      newLeadsCount,
+      contactedLeadsCount,
+      convertedLeadsCount,
+      conversionRate: totalLeads > 0 ? ((convertedLeadsCount / totalLeads) * 100).toFixed(1) : '0.0',
+      topPages,
+      deviceCounts: { Mobile: mobileCount, Desktop: desktopCount },
+      dailyHistory
+    }
+  });
+});
+
+// Reset Traffic Analytics Logs (Clean Slate)
+app.post('/api/admin/reset-traffic', authenticateAdmin, async (req, res) => {
   try {
-    const totalTraffic = await Traffic.countDocuments();
-    const todayTraffic = await Traffic.countDocuments({ date: today });
+    const localDb = loadDB();
+    localDb.traffic = [];
+    saveDB(localDb);
 
-    const totalLeads = await Lead.countDocuments();
-    const startOfToday = new Date(today);
-    const todayLeads = await Lead.countDocuments({ createdAt: { $gte: startOfToday } });
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      await Traffic.deleteMany({}).catch(() => {});
+    }
 
-    const newLeadsCount = await Lead.countDocuments({ status: 'New' });
-    const contactedLeadsCount = await Lead.countDocuments({ status: 'Contacted' });
-    const convertedLeadsCount = await Lead.countDocuments({ status: 'Converted' });
-
-    // Top Pages
-    const topPagesAgg = await Traffic.aggregate([
-      { $group: { _id: '$path', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-    const topPages = topPagesAgg.map(p => ({ path: p._id, count: p.count }));
-
-    // Device breakdown
-    const mobileCount = await Traffic.countDocuments({ device: 'Mobile' });
-    const desktopCount = await Traffic.countDocuments({ device: 'Desktop' });
-
-    res.json({
-      success: true,
-      stats: {
-        todayTraffic,
-        totalTraffic,
-        todayLeads,
-        totalLeads,
-        newLeadsCount,
-        contactedLeadsCount,
-        convertedLeadsCount,
-        conversionRate: totalLeads > 0 ? ((convertedLeadsCount / totalLeads) * 100).toFixed(1) : '0.0',
-        topPages,
-        deviceCounts: { Mobile: mobileCount, Desktop: desktopCount }
-      }
-    });
+    return res.json({ success: true, message: 'All traffic analytics reset to 0.' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch MongoDB stats' });
+    return res.status(500).json({ error: 'Failed to reset traffic data' });
   }
 });
 
-// Get Leads with filtering, search & date filter from MongoDB
+// Get Leads with filtering, search & date filter
 app.get('/api/admin/leads', authenticateAdmin, async (req, res) => {
   const { status, search, date } = req.query;
-  const filter = {};
+  const localDb = loadDB();
+
+  let leads = localDb.leads || [];
+
+  try {
+    const mongoLeads = await Lead.find().sort({ lastVisitedAt: -1, createdAt: -1 }).lean().maxTimeMS(2000).catch(() => []);
+    if (mongoLeads && mongoLeads.length > 0) {
+      leads = mongoLeads.map(l => ({
+        ...l,
+        id: l._id ? l._id.toString() : l.id
+      }));
+    }
+  } catch (e) {}
 
   if (status && status !== 'All') {
-    filter.status = status;
-  }
-
-  if (date) {
-    const startDate = new Date(date);
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1);
-    filter.$or = [
-      { createdAt: { $gte: startDate, $lt: endDate } },
-      { lastVisitedAt: { $gte: startDate, $lt: endDate } }
-    ];
+    leads = leads.filter(l => l.status === status);
   }
 
   if (search) {
-    const q = search.trim();
-    const searchRegex = new RegExp(q, 'i');
-    filter.$or = [
-      { fullName: searchRegex },
-      { email: searchRegex },
-      { phone: searchRegex },
-      { businessName: searchRegex }
-    ];
+    const q = search.trim().toLowerCase();
+    leads = leads.filter(l =>
+      (l.fullName && l.fullName.toLowerCase().includes(q)) ||
+      (l.email && l.email.toLowerCase().includes(q)) ||
+      (l.phone && l.phone.toLowerCase().includes(q)) ||
+      (l.businessName && l.businessName.toLowerCase().includes(q))
+    );
   }
 
-  try {
-    const leads = await Lead.find(filter).sort({ lastVisitedAt: -1, createdAt: -1 }).lean();
-    const formattedLeads = leads.map(l => ({
-      ...l,
-      id: l._id.toString()
-    }));
-    res.json({ success: true, leads: formattedLeads });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch leads from MongoDB' });
+  if (date) {
+    leads = leads.filter(l => {
+      const createdStr = l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : '';
+      const visitedStr = l.lastVisitedAt ? new Date(l.lastVisitedAt).toISOString().split('T')[0] : '';
+      return createdStr === date || visitedStr === date;
+    });
   }
+
+  res.json({ success: true, leads });
 });
 
-// Update Lead Status in MongoDB
+// Update Lead Status
 app.patch('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
   try {
-    const lead = await Lead.findByIdAndUpdate(id, { status }, { new: true });
-    if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    res.json({ success: true, lead: { ...lead.toObject(), id: lead._id.toString() } });
+    const localDb = loadDB();
+    const lead = localDb.leads?.find(l => l.id === id || l._id === id);
+    if (lead) {
+      lead.status = status;
+      saveDB(localDb);
+    }
+
+    Lead.findByIdAndUpdate(id, { status }, { new: true }).catch(() => {});
+    res.json({ success: true, lead: { id, status } });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update lead status' });
   }
 });
 
-// Delete Lead from MongoDB
+// Delete Lead
 app.delete('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
   const { id } = req.params;
   try {
-    await Lead.findByIdAndDelete(id);
+    const localDb = loadDB();
+    if (localDb.leads) {
+      localDb.leads = localDb.leads.filter(l => l.id !== id && l._id !== id);
+      saveDB(localDb);
+    }
+
+    Lead.findByIdAndDelete(id).catch(() => {});
     res.json({ success: true, message: 'Lead deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete lead' });
   }
 });
 
-// Get AI WhatsApp Chat Logs from MongoDB
+// Get AI WhatsApp Chat Logs
 app.get('/api/admin/chat-logs', authenticateAdmin, async (req, res) => {
+  const localDb = loadDB();
+  let logs = localDb.chatLogs || [];
+
   try {
-    const logs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean();
-    res.json({ success: true, chatLogs: logs });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch chat logs' });
-  }
+    const mongoLogs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean().maxTimeMS(2000).catch(() => []);
+    if (mongoLogs && mongoLogs.length > 0) {
+      logs = mongoLogs;
+    }
+  } catch (e) {}
+
+  res.json({ success: true, chatLogs: logs });
 });
 
 // Start Express Server

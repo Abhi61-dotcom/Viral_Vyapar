@@ -6,12 +6,14 @@ import WhatsAppFloatingBtn from '../components/Common/WhatsAppFloatingBtn';
 import ROICalculatorModal from '../components/Common/ROICalculatorModal';
 import ConsultationModal from '../components/Common/ConsultationModal';
 import LeadCaptureModal from '../components/Common/LeadCaptureModal';
+import LuxuryIntroAnimation from '../components/Animations/LuxuryIntroAnimation';
 import { trackPageView } from '../utils/api';
 
 const MainLayout = () => {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [isConsultationOpen, setIsConsultationOpen] = useState(false);
   const [consultationData, setConsultationData] = useState({});
+  const [showIntro, setShowIntro] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
@@ -26,6 +28,11 @@ const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100 font-body flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+      {/* Fullscreen Luxury Modern Intro Animation */}
+      {showIntro && (
+        <LuxuryIntroAnimation onComplete={() => setShowIntro(false)} />
+      )}
+
       <Navbar
         onOpenCalculator={() => setIsCalculatorOpen(true)}
         onOpenConsultation={() => handleOpenConsultation()}
@@ -34,7 +41,8 @@ const MainLayout = () => {
       <main className="flex-grow pt-24">
         <Outlet context={{
           openCalculator: () => setIsCalculatorOpen(true),
-          openConsultation: (data) => handleOpenConsultation(data)
+          openConsultation: (data) => handleOpenConsultation(data),
+          replayIntro: () => setShowIntro(true)
         }} />
       </main>
 

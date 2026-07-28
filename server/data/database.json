@@ -2,77 +2,104 @@
   "admin": {
     "username": "admin",
     "email": "choudharyabhishek1503@gmail.com",
-    "passwordHash": "$2b$10$jn8oAAEaT2SlimCj40VdHOiBl47pyWBZQwjzjkyxTyrkmz..dFJqK",
-    "updatedAt": "2026-07-27T10:30:34.479Z"
+    "passwordHash": "$2b$10$m8JXWkaXuQmd9hLMgv3vXOCPO74siVSDtn9EmlBpkK3CBQCX12UZO",
+    "updatedAt": "2026-07-28T11:13:04.644Z"
   },
   "otpStore": null,
   "traffic": [
     {
-      "id": "tr_1785143661795_n8iv",
-      "timestamp": "2026-07-27T09:14:21.795Z",
-      "path": "/",
+      "path": "/contact",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:02:22.277Z"
     },
     {
-      "id": "tr_1785143661810_li37",
-      "timestamp": "2026-07-27T09:14:21.810Z",
       "path": "/",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:15:52.306Z"
     },
     {
-      "id": "tr_1785143784119_glfi",
-      "timestamp": "2026-07-27T09:16:24.119Z",
-      "path": "/",
+      "path": "/about",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:15:59.515Z"
     },
     {
-      "id": "tr_1785143784127_yen2",
-      "timestamp": "2026-07-27T09:16:24.127Z",
       "path": "/",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:18:55.683Z"
     },
     {
-      "id": "tr_1785144153290_7dup",
-      "timestamp": "2026-07-27T09:22:33.290Z",
-      "path": "/",
+      "path": "/pricing",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:07.837Z"
     },
     {
-      "id": "tr_1785144153299_fq82",
-      "timestamp": "2026-07-27T09:22:33.299Z",
-      "path": "/",
+      "path": "/portfolio",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:19.823Z"
     },
     {
-      "id": "tr_1785144333688_6bkd",
-      "timestamp": "2026-07-27T09:25:33.688Z",
-      "path": "/",
+      "path": "/industries",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:28.112Z"
     },
     {
-      "id": "tr_1785144333699_a0bd",
-      "timestamp": "2026-07-27T09:25:33.699Z",
+      "path": "/services",
+      "ip": "::1",
+      "device": "Desktop",
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:29.193Z"
+    },
+    {
+      "path": "/about",
+      "ip": "::1",
+      "device": "Desktop",
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:29.753Z"
+    },
+    {
       "path": "/",
       "ip": "::1",
       "device": "Desktop",
-      "date": "2026-07-27"
+      "date": "2026-07-28",
+      "timestamp": "2026-07-28T11:19:30.648Z"
     }
   ],
   "leads": [
+    {
+      "fullName": "Website Visitor",
+      "phone": "N/A",
+      "email": "avhi@gmial.com",
+      "businessName": "Visitor Inquiry",
+      "businessType": "General Business",
+      "goal": "Free Growth Blueprint & Audit",
+      "budget": "Not Specified",
+      "status": "New",
+      "source": "Instant Lead Magnet Popup",
+      "visitCount": 1,
+      "lastVisitedAt": "2026-07-28T10:07:37.247Z",
+      "createdAt": "2026-07-28T10:07:37.247Z",
+      "visitHistory": [
+        {
+          "timestamp": "2026-07-28T10:07:37.247Z",
+          "source": "Instant Lead Magnet Popup"
+        }
+      ],
+      "id": "1785233257252"
+    },
     {
       "id": "lead_1785143670839",
       "fullName": "Abhishek Choudhary",

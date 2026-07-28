@@ -6,15 +6,12 @@ import bcrypt from 'bcryptjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DB_FILE = path.join(__dirname, 'data', 'database.json');
+// On Vercel (read-only filesystem), use /tmp directory for fallback JSON DB
+const DB_FILE = process.env.VERCEL
+  ? path.join('/tmp', 'database.json')
+  : path.join(__dirname, 'data', 'database.json');
 
-// Ensure data directory exists
-const dataDir = path.dirname(DB_FILE);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Initial 100% Real Clean database structure with Email OTP security configuration
+// Initial clean database structure
 const getCleanData = () => {
   const salt = bcrypt.genSaltSync(10);
   const hashedPassword = bcrypt.hashSync('admin123', salt);
@@ -26,7 +23,7 @@ const getCleanData = () => {
       passwordHash: hashedPassword,
       updatedAt: new Date().toISOString()
     },
-    otpStore: null, // { code, expiresAt, email }
+    otpStore: null,
     traffic: [],
     leads: [],
     chatLogs: []
@@ -34,35 +31,45 @@ const getCleanData = () => {
 };
 
 export const loadDB = () => {
-  if (!fs.existsSync(DB_FILE)) {
-    const cleanData = getCleanData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(cleanData, null, 2), 'utf8');
-    return cleanData;
-  }
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf8');
-    const data = JSON.parse(raw);
-    if (!data.admin.email) {
-      data.admin.email = 'choudharyabhishek1503@gmail.com';
+    const dataDir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dataDir)) {
+      try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
     }
-    return data;
-  } catch (err) {
+
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf8');
+      const data = JSON.parse(raw);
+      if (data && data.admin) {
+        if (!data.admin.email) {
+          data.admin.email = 'choudharyabhishek1503@gmail.com';
+        }
+        return data;
+      }
+    }
+
     const cleanData = getCleanData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(cleanData, null, 2), 'utf8');
+    try { fs.writeFileSync(DB_FILE, JSON.stringify(cleanData, null, 2), 'utf8'); } catch (e) {}
     return cleanData;
+  } catch (err) {
+    return getCleanData();
   }
 };
 
 export const saveDB = (data) => {
   try {
+    const dataDir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dataDir)) {
+      try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
+    }
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
-    console.error('Error saving DB:', err);
+    console.warn('DB Save Warning (Read-only FS or Vercel):', err.message);
   }
 };
 
 export const resetDBToClean = () => {
   const cleanData = getCleanData();
-  fs.writeFileSync(DB_FILE, JSON.stringify(cleanData, null, 2), 'utf8');
+  try { fs.writeFileSync(DB_FILE, JSON.stringify(cleanData, null, 2), 'utf8'); } catch (e) {}
   return cleanData;
 };

@@ -6,8 +6,18 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Track Page Analytics
+let lastTrackedPath = '';
+let lastTrackedTime = 0;
+
+// Track Page Analytics (With 2.5s Route Deduplication)
 export const trackPageView = async (path) => {
+  const now = Date.now();
+  if (path === lastTrackedPath && (now - lastTrackedTime) < 2500) {
+    return;
+  }
+  lastTrackedPath = path;
+  lastTrackedTime = now;
+
   try {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const device = isMobile ? 'Mobile' : 'Desktop';

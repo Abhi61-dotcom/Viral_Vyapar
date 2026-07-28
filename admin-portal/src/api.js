@@ -7,17 +7,28 @@ const getAuthHeaders = () => {
 
 export const adminLogin = async (password) => {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
+
     const data = await res.json();
-    if (data.token) {
+    if (res.ok && data.token) {
       sessionStorage.setItem('vv_admin_token', data.token);
+      return { success: true, token: data.token };
+    } else {
+      return { error: data.error || 'Incorrect Admin Password' };
     }
-    return data;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return { error: 'Connection timed out. Please check backend server.' };
+    }
     return { error: 'Failed to connect to backend server' };
   }
 };
@@ -59,9 +70,35 @@ export const verifyOtpChangePassword = async (currentPassword, otp, newPassword)
   }
 };
 
-export const fetchAdminStats = async () => {
+export const forgotPasswordSendOtp = async () => {
   try {
-    const res = await fetch(`${API_BASE}/admin/stats`, {
+    const res = await fetch(`${API_BASE}/auth/forgot-password-send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await res.json();
+  } catch (err) {
+    return { error: 'Server error sending OTP. Please check backend.' };
+  }
+};
+
+export const forgotPasswordVerify = async (otp, newPassword) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/forgot-password-verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp, newPassword })
+    });
+    return await res.json();
+  } catch (err) {
+    return { error: 'Server error verifying OTP and resetting password.' };
+  }
+};
+
+export const fetchAdminStats = async (date = '') => {
+  try {
+    const url = date ? `${API_BASE}/admin/stats?date=${date}` : `${API_BASE}/admin/stats`;
+    const res = await fetch(url, {
       headers: getAuthHeaders()
     });
     return await res.json();
@@ -117,5 +154,17 @@ export const fetchChatLogs = async () => {
     return await res.json();
   } catch (err) {
     return { error: 'Failed to fetch chat logs' };
+  }
+};
+
+export const resetAdminTraffic = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/reset-traffic`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return await res.json();
+  } catch (err) {
+    return { error: 'Failed to reset traffic data' };
   }
 };

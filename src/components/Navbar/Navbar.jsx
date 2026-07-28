@@ -44,7 +44,7 @@ const Navbar = ({ onOpenCalculator, onOpenConsultation }) => {
         <span>🚀 Grow Your Business 10X with Viral Reels & Performance Ads!</span>
         <button
           onClick={onOpenConsultation}
-          className="underline font-bold hover:text-amber-300 ml-1 inline-flex items-center gap-0.5"
+          className="underline font-bold hover:text-amber-300 ml-1 inline-flex items-center gap-0.5 cursor-pointer"
         >
           Claim Free Audit <FaChevronRight size={10} />
         </button>
@@ -91,13 +91,13 @@ const Navbar = ({ onOpenCalculator, onOpenConsultation }) => {
           <div className="hidden md:flex items-center space-x-3">
             <button
               onClick={onOpenCalculator}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition hover:border-violet-500/50"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition hover:border-violet-500/50 cursor-pointer"
             >
               <FaCalculator className="text-violet-400" /> ROI Calculator
             </button>
             <button
               onClick={onOpenConsultation}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white text-xs font-bold shadow-lg shadow-violet-600/30 hover:scale-105 transition duration-200 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white text-xs font-bold shadow-lg shadow-violet-600/30 hover:scale-105 transition duration-200 flex items-center gap-2 cursor-pointer"
             >
               <FaPhoneAlt /> Get Free Audit
             </button>

@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"SERVER,CLIENT,ADMIN\" -c \"magenta.bold,cyan.bold,yellow.bold\" \"node server/server.js\" \"vite --force\" \"vite --force --config admin-portal/vite.config.js admin-portal\"",
+    "dev": "concurrently -n \"SERVER,CLIENT,ADMIN\" -c \"magenta.bold,cyan.bold,yellow.bold\" \"node --watch server/server.js\" \"vite --force\" \"vite --force --config admin-portal/vite.config.js admin-portal\"",
     "ev": "npm run dev",
-    "server": "node server/server.js",
+    "server": "node --watch server/server.js",
     "client": "vite --force",
     "admin": "vite --force --config admin-portal/vite.config.js admin-portal",
     "build": "vite build && vite build --config admin-portal/vite.config.js admin-portal",
@@ -41,6 +41,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
+    "vercel": "^57.0.0",
     "vite": "^8.1.1"
   }
 }
