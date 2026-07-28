@@ -410,10 +410,10 @@ app.post('/api/analytics/track', async (req, res) => {
 
   res.json({ success: true }); // Return immediately to client browser
 
-  // EXCLUDE Admin Panel visits & API internal requests completely
+  // EXCLUDE Admin Panel visits completely
+  const targetPath = (path || '/').toLowerCase().trim();
   if (
-    path.startsWith('/admin') ||
-    path.startsWith('/api') ||
+    targetPath.startsWith('/admin') ||
     referer.includes(':5175') ||
     referer.includes('/admin')
   ) {

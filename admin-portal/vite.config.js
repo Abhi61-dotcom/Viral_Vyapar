@@ -18,6 +18,13 @@ export default defineConfig({
     host: '0.0.0.0',
     strictPort: true,
     cors: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    },
     watch: {
       ignored: ['**/server/**', '**/server/data/**']
     }

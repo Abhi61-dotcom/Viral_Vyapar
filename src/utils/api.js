@@ -1,12 +1,4 @@
-const getApiBase = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
-    return `${window.location.protocol}//${hostname}:5000/api`;
-  }
-  return '/api';
-};
-
-const API_BASE = getApiBase();
+const API_BASE = '/api';
 
 // Helper to get auth header
 const getAuthHeaders = () => {

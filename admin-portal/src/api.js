@@ -1,4 +1,4 @@
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api';
+const API_BASE = '/api';
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem('vv_admin_token') || localStorage.getItem('vv_admin_token');
