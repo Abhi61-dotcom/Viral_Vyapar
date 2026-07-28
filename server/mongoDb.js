@@ -12,8 +12,8 @@ if (process.platform === 'win32') {
   } catch (e) {}
 }
 
-// Disable Mongoose command buffering so offline/deferred connections fail fast (<1ms) instead of hanging requests
-mongoose.set('bufferCommands', false);
+// Enable bufferCommands so queries wait safely during initial connection
+mongoose.set('bufferCommands', true);
 
 let cachedPromise = null;
 

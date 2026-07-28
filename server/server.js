@@ -25,9 +25,11 @@ app.use((req, res, next) => {
   express.json({ limit: '10mb' })(req, res, next);
 });
 
-// Non-blocking background MongoDB connection trigger
-app.use((req, res, next) => {
-  connectMongoDB().catch(() => {});
+// MongoDB Connection Trigger
+app.use(async (req, res, next) => {
+  try {
+    await connectMongoDB();
+  } catch (e) {}
   next();
 });
 
@@ -446,14 +448,17 @@ app.post('/api/analytics/track', async (req, res) => {
     });
     saveDB(localDb);
 
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
-      Traffic.create({
-        path: path || '/',
-        ip,
-        device: detectedDevice,
-        date: today,
-        timestamp: new Date()
-      }).catch(() => {});
+    if (process.env.MONGO_URI) {
+      await connectMongoDB();
+      if (mongoose.connection && mongoose.connection.readyState >= 1) {
+        await Traffic.create({
+          path: path || '/',
+          ip,
+          device: detectedDevice,
+          date: today,
+          timestamp: new Date()
+        }).catch(() => {});
+      }
     }
   } catch (err) {}
 });
@@ -506,16 +511,19 @@ app.post('/api/leads/submit', async (req, res) => {
 
     res.json({ success: true, message: 'Thank you! Our growth team will contact you shortly.' });
 
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
-      Lead.findOneAndUpdate(
-        { email: normalizedEmail },
-        {
-          $set: leadObj,
-          $inc: { visitCount: 1 },
-          $push: { visitHistory: { timestamp: now, source: source || 'Instant Lead Magnet Popup' } }
-        },
-        { upsert: true, new: true }
-      ).catch(() => {});
+    if (process.env.MONGO_URI) {
+      await connectMongoDB();
+      if (mongoose.connection && mongoose.connection.readyState >= 1) {
+        await Lead.findOneAndUpdate(
+          { email: normalizedEmail },
+          {
+            $set: leadObj,
+            $inc: { visitCount: 1 },
+            $push: { visitHistory: { timestamp: now, source: source || 'Instant Lead Magnet Popup' } }
+          },
+          { upsert: true, new: true }
+        ).catch(() => {});
+      }
     }
   } catch (err) {
     res.json({ success: true, message: 'Thank you! Your submission was recorded.' });
@@ -583,6 +591,22 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
 
   let rawTraffic = localDb.traffic || [];
   let allLeads = localDb.leads || [];
+
+  if (process.env.MONGO_URI) {
+    await connectMongoDB();
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      try {
+        const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(2000).exec();
+        const mongoLeads = await Lead.find({}).lean().maxTimeMS(2000).exec();
+        if (mongoTraffic && mongoTraffic.length > 0) {
+          rawTraffic = mongoTraffic;
+        }
+        if (mongoLeads && mongoLeads.length > 0) {
+          allLeads = mongoLeads;
+        }
+      } catch (e) {}
+    }
+  }
 
   // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
   const allTraffic = rawTraffic.filter(t => {
