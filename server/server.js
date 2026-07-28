@@ -458,6 +458,8 @@ app.post('/api/analytics/track', async (req, res) => {
       }
     }
   } catch (err) {}
+  
+  return res.json({ success: true });
 });
 
 // High-Speed Lead Submission (< 150ms)
@@ -506,8 +508,6 @@ app.post('/api/leads/submit', async (req, res) => {
     }
     saveDB(localDb);
 
-    res.json({ success: true, message: 'Thank you! Our growth team will contact you shortly.' });
-
     if (await connectMongoDB()) {
       if (mongoose.connection && mongoose.connection.readyState >= 1) {
         await Lead.findOneAndUpdate(
@@ -521,9 +521,9 @@ app.post('/api/leads/submit', async (req, res) => {
         ).catch(() => {});
       }
     }
-  } catch (err) {
-    res.json({ success: true, message: 'Thank you! Your submission was recorded.' });
-  }
+  } catch (err) {}
+
+  return res.json({ success: true, message: 'Thank you! Our growth team will contact you shortly.' });
 });
 
 // AI Agent WhatsApp Chat Endpoint
@@ -552,8 +552,6 @@ app.post('/api/whatsapp/ai-chat', async (req, res) => {
     botReply = "Thanks for reaching out! Viral Vyapar specializes in Reels Marketing, Performance Ads, Local SEO & WhatsApp Automation. Would you like to schedule a free 30-min strategy call or chat directly with our founder on WhatsApp?";
   }
 
-  res.json({ success: true, reply: botReply });
-
   // Background Chat Logging
   try {
     const localDb = loadDB();
@@ -561,13 +559,19 @@ app.post('/api/whatsapp/ai-chat', async (req, res) => {
     localDb.chatLogs.unshift({ session: session || 'guest', userQuery: message, aiReply: botReply, timestamp: new Date().toISOString() });
     saveDB(localDb);
 
-    ChatLog.create({
-      session: session || 'guest',
-      userQuery: message,
-      aiReply: botReply,
-      timestamp: new Date()
-    }).catch(() => {});
+    if (await connectMongoDB()) {
+      if (mongoose.connection && mongoose.connection.readyState >= 1) {
+        await ChatLog.create({
+          session: session || 'guest',
+          userQuery: message,
+          aiReply: botReply,
+          timestamp: new Date()
+        }).catch(() => {});
+      }
+    }
   } catch (err) {}
+
+  return res.json({ success: true, reply: botReply });
 });
 
 // Helper for date formatted YYYY-MM-DD
@@ -713,15 +717,20 @@ app.get('/api/admin/leads', authenticateAdmin, async (req, res) => {
   const { status, search, date } = req.query;
   const localDb = loadDB();
 
-  let leads = localDb.leads || [];
+  let leads = [...(localDb.leads || [])];
 
   try {
-    const mongoLeads = await Lead.find().sort({ lastVisitedAt: -1, createdAt: -1 }).lean().maxTimeMS(2000).catch(() => []);
-    if (mongoLeads && mongoLeads.length > 0) {
-      leads = mongoLeads.map(l => ({
-        ...l,
-        id: l._id ? l._id.toString() : l.id
-      }));
+    if (await connectMongoDB()) {
+      const mongoLeads = await Lead.find().sort({ lastVisitedAt: -1, createdAt: -1 }).lean().maxTimeMS(2000).catch(() => []);
+      if (mongoLeads && mongoLeads.length > 0) {
+        const localEmails = new Set(leads.map(l => (l.email || '').toLowerCase()));
+        mongoLeads.forEach(m => {
+          const emailKey = (m.email || '').toLowerCase();
+          if (!localEmails.has(emailKey) || emailKey === 'visitor@viralvyapar.com' || emailKey === 'n/a') {
+            leads.push({ ...m, id: m._id ? m._id.toString() : m.id });
+          }
+        });
+      }
     }
   } catch (e) {}
 
@@ -763,7 +772,9 @@ app.patch('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
       saveDB(localDb);
     }
 
-    Lead.findByIdAndUpdate(id, { status }, { new: true }).catch(() => {});
+    if (await connectMongoDB()) {
+      await Lead.findByIdAndUpdate(id, { status }, { new: true }).catch(() => {});
+    }
     res.json({ success: true, lead: { id, status } });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update lead status' });
@@ -780,7 +791,9 @@ app.delete('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
       saveDB(localDb);
     }
 
-    Lead.findByIdAndDelete(id).catch(() => {});
+    if (await connectMongoDB()) {
+      await Lead.findByIdAndDelete(id).catch(() => {});
+    }
     res.json({ success: true, message: 'Lead deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete lead' });
@@ -790,12 +803,20 @@ app.delete('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
 // Get AI WhatsApp Chat Logs
 app.get('/api/admin/chat-logs', authenticateAdmin, async (req, res) => {
   const localDb = loadDB();
-  let logs = localDb.chatLogs || [];
+  let logs = [...(localDb.chatLogs || [])];
 
   try {
-    const mongoLogs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean().maxTimeMS(2000).catch(() => []);
-    if (mongoLogs && mongoLogs.length > 0) {
-      logs = mongoLogs;
+    if (await connectMongoDB()) {
+      const mongoLogs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean().maxTimeMS(2000).catch(() => []);
+      if (mongoLogs && mongoLogs.length > 0) {
+        const localKeys = new Set(logs.map(l => `${l.session}_${l.userQuery}`));
+        mongoLogs.forEach(m => {
+          const key = `${m.session}_${m.userQuery}`;
+          if (!localKeys.has(key)) {
+            logs.push(m);
+          }
+        });
+      }
     }
   } catch (e) {}
 
