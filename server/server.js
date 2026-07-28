@@ -448,8 +448,7 @@ app.post('/api/analytics/track', async (req, res) => {
     });
     saveDB(localDb);
 
-    if (process.env.MONGO_URI) {
-      await connectMongoDB();
+    if (await connectMongoDB()) {
       if (mongoose.connection && mongoose.connection.readyState >= 1) {
         await Traffic.create({
           path: path || '/',
@@ -511,8 +510,7 @@ app.post('/api/leads/submit', async (req, res) => {
 
     res.json({ success: true, message: 'Thank you! Our growth team will contact you shortly.' });
 
-    if (process.env.MONGO_URI) {
-      await connectMongoDB();
+    if (await connectMongoDB()) {
       if (mongoose.connection && mongoose.connection.readyState >= 1) {
         await Lead.findOneAndUpdate(
           { email: normalizedEmail },
@@ -592,8 +590,7 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   let rawTraffic = localDb.traffic || [];
   let allLeads = localDb.leads || [];
 
-  if (process.env.MONGO_URI) {
-    await connectMongoDB();
+  if (await connectMongoDB()) {
     if (mongoose.connection && mongoose.connection.readyState >= 1) {
       try {
         const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(2000).exec();

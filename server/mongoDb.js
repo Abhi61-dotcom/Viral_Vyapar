@@ -15,10 +15,10 @@ if (process.platform === 'win32') {
 // Enable bufferCommands so queries wait safely during initial connection
 mongoose.set('bufferCommands', true);
 
-let cachedPromise = null;
+const DEFAULT_MONGO_URI = 'mongodb+srv://jaatabhishek61_db_user:tN36kivXbe6WAcbs@cluster0.sksgdt0.mongodb.net/viral_vyapar?retryWrites=true&w=majority&appName=Cluster0';
 
 export const connectMongoDB = async () => {
-  const uri = process.env.MONGO_URI;
+  const uri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
   if (!uri) {
     return false;
   }
