@@ -6,12 +6,6 @@ import Traffic from './models/Traffic.js';
 import ChatLog from './models/ChatLog.js';
 import Admin from './models/Admin.js';
 
-if (process.platform === 'win32') {
-  try {
-    dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-  } catch (e) {}
-}
-
 // Enable bufferCommands so queries wait safely during initial connection
 mongoose.set('bufferCommands', true);
 
@@ -29,9 +23,9 @@ export const connectMongoDB = async () => {
 
   if (!cachedPromise) {
     cachedPromise = mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 3000,
-      connectTimeoutMS: 3000,
-      maxPoolSize: 10
+      serverSelectionTimeoutMS: 1500,
+      connectTimeoutMS: 1500,
+      maxPoolSize: 5
     }).then((m) => {
       // Background seed default admin if needed
       Admin.findOne({ username: 'admin' }).then((existingAdmin) => {

@@ -25,11 +25,9 @@ app.use((req, res, next) => {
   express.json({ limit: '10mb' })(req, res, next);
 });
 
-// MongoDB Connection Trigger
-app.use(async (req, res, next) => {
-  try {
-    await connectMongoDB();
-  } catch (e) {}
+// Non-blocking background MongoDB connection trigger
+app.use((req, res, next) => {
+  connectMongoDB().catch(() => {});
   next();
 });
 
@@ -587,22 +585,37 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   const targetDate = date || today;
   const localDb = loadDB();
 
-  let rawTraffic = localDb.traffic || [];
-  let allLeads = localDb.leads || [];
+  let rawTraffic = [...(localDb.traffic || [])];
+  let allLeads = [...(localDb.leads || [])];
 
-  if (await connectMongoDB()) {
-    if (mongoose.connection && mongoose.connection.readyState >= 1) {
-      try {
-        const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(2000).exec();
-        const mongoLeads = await Lead.find({}).lean().maxTimeMS(2000).exec();
-        if (mongoTraffic && mongoTraffic.length > 0) {
-          rawTraffic = mongoTraffic;
-        }
-        if (mongoLeads && mongoLeads.length > 0) {
-          allLeads = mongoLeads;
-        }
-      } catch (e) {}
-    }
+  if (mongoose.connection && mongoose.connection.readyState >= 1) {
+    try {
+      const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(1000).exec();
+      const mongoLeads = await Lead.find({}).lean().maxTimeMS(1000).exec();
+      if (mongoTraffic && mongoTraffic.length > 0) {
+        const localKeys = new Set(rawTraffic.map(t => `${t.path}_${t.timestamp}`));
+        mongoTraffic.forEach(t => {
+          const key = `${t.path}_${new Date(t.timestamp).toISOString()}`;
+          if (!localKeys.has(key)) {
+            rawTraffic.push({
+              path: t.path,
+              ip: t.ip,
+              device: t.device,
+              date: t.date || getLocalDateString(new Date(t.timestamp)),
+              timestamp: new Date(t.timestamp).toISOString()
+            });
+          }
+        });
+      }
+      if (mongoLeads && mongoLeads.length > 0) {
+        const localEmails = new Set(allLeads.map(l => (l.email || '').toLowerCase()));
+        mongoLeads.forEach(l => {
+          if (l.email && !localEmails.has(l.email.toLowerCase())) {
+            allLeads.push(l);
+          }
+        });
+      }
+    } catch (e) {}
   }
 
   // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
