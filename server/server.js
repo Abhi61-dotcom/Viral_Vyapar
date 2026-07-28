@@ -574,12 +574,21 @@ app.post('/api/whatsapp/ai-chat', async (req, res) => {
   return res.json({ success: true, reply: botReply });
 });
 
-// Helper for date formatted YYYY-MM-DD
+// Helper for date formatted YYYY-MM-DD in Indian Standard Time (Asia/Kolkata)
 function getLocalDateString(dateObj = new Date()) {
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(dateObj);
+  } catch (e) {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 }
 
 // Dashboard Stats & Analytics Summary (Realtime Live Data & Calendar History)

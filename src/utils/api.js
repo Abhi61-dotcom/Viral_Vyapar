@@ -12,7 +12,7 @@ let lastTrackedTime = 0;
 // Track Page Analytics (With Robust Mobile Detection & Route Deduplication)
 export const trackPageView = async (path) => {
   const now = Date.now();
-  if (path === lastTrackedPath && (now - lastTrackedTime) < 2500) {
+  if (path === lastTrackedPath && (now - lastTrackedTime) < 800) {
     return;
   }
   lastTrackedPath = path;
