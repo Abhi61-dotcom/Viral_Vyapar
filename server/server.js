@@ -394,7 +394,14 @@ const recentTrackCache = new Map();
 
 // Non-blocking Instant Analytics Tracking (<10ms) - FRONTEND ONLY
 app.post('/api/analytics/track', async (req, res) => {
-  const { path = '/', device = 'Desktop' } = req.body || {};
+  const { path = '/' } = req.body || {};
+  const reqDevice = (req.body?.device || '').trim();
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+
+  // Detect mobile from either client payload or HTTP User-Agent header
+  const isMobileUA = /mobile|android|iphone|ipad|ipod|blackberry|webos|windows phone|iemobile|opera mini|mobile safari/i.test(ua);
+  const detectedDevice = (reqDevice === 'Mobile' || isMobileUA) ? 'Mobile' : 'Desktop';
+
   const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
   const today = getLocalDateString();
   const referer = (req.headers['referer'] || req.headers['origin'] || '').toLowerCase();
@@ -433,7 +440,7 @@ app.post('/api/analytics/track', async (req, res) => {
     localDb.traffic.push({
       path: path || '/',
       ip,
-      device: device === 'Mobile' ? 'Mobile' : 'Desktop',
+      device: detectedDevice,
       date: today,
       timestamp: new Date().toISOString()
     });
@@ -443,7 +450,7 @@ app.post('/api/analytics/track', async (req, res) => {
       Traffic.create({
         path: path || '/',
         ip,
-        device: device === 'Mobile' ? 'Mobile' : 'Desktop',
+        device: detectedDevice,
         date: today,
         timestamp: new Date()
       }).catch(() => {});

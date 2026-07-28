@@ -1,4 +1,12 @@
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api';
+const getApiBase = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+    return `${window.location.protocol}//${hostname}:5000/api`;
+  }
+  return '/api';
+};
+
+const API_BASE = getApiBase();
 
 // Helper to get auth header
 const getAuthHeaders = () => {
@@ -9,7 +17,7 @@ const getAuthHeaders = () => {
 let lastTrackedPath = '';
 let lastTrackedTime = 0;
 
-// Track Page Analytics (With 2.5s Route Deduplication)
+// Track Page Analytics (With Robust Mobile Detection & Route Deduplication)
 export const trackPageView = async (path) => {
   const now = Date.now();
   if (path === lastTrackedPath && (now - lastTrackedTime) < 2500) {
@@ -19,7 +27,11 @@ export const trackPageView = async (path) => {
   lastTrackedTime = now;
 
   try {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const ua = navigator.userAgent || '';
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(ua);
+    const isSmallScreen = window.innerWidth <= 1024;
+    const isMobile = isMobileUA || (isTouchDevice && isSmallScreen);
     const device = isMobile ? 'Mobile' : 'Desktop';
 
     await fetch(`${API_BASE}/analytics/track`, {
