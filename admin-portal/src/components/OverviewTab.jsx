@@ -167,14 +167,19 @@ export const OverviewTab = ({
         <div className={`glass-card rounded-3xl p-6 flex flex-col justify-between ${cardBorder}`}>
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-heading font-extrabold text-lg ${textPrimary}`}>Device Breakdown</h3>
+              <div>
+                <h3 className={`font-heading font-extrabold text-lg ${textPrimary}`}>Device Breakdown</h3>
+                <span className="text-xs text-amber-400 font-semibold font-mono">
+                  {selectedTrafficDate ? `Date: ${selectedTrafficDate}` : "Today's Traffic"}
+                </span>
+              </div>
               <span className="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                Multi-Signal
+                Filtered Date
               </span>
             </div>
 
             <p className={`text-xs mb-6 ${textSecondary}`}>
-              Realtime breakdown of visitors connecting via Mobile Phones vs Desktop Laptops
+              Visitors connecting via Mobile Phones vs Desktop Laptops on {selectedTrafficDate || "Today"}
             </p>
 
             <DeviceBreakdownChart mobile={mobileCount} desktop={desktopCount} isDark={isDark} />
@@ -205,7 +210,12 @@ export const OverviewTab = ({
         {/* Top Visited Pages Ranking */}
         <div className={`glass-card rounded-3xl p-6 ${cardBorder}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-heading font-extrabold text-lg ${textPrimary}`}>Top Visited Pages</h3>
+            <div>
+              <h3 className={`font-heading font-extrabold text-lg ${textPrimary}`}>Top Visited Pages</h3>
+              <span className="text-xs text-amber-400 font-semibold font-mono">
+                {selectedTrafficDate ? `Date: ${selectedTrafficDate}` : "Today's Traffic"}
+              </span>
+            </div>
             <span className={`text-xs font-semibold ${textSecondary}`}>{topPages.length} Routes Tracked</span>
           </div>
 

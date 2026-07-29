@@ -638,8 +638,8 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   const todayTraffic = allTraffic.filter(t => t.date === today).length;
   const selectedDateTraffic = allTraffic.filter(t => t.date === targetDate).length;
 
-  // Filter traffic for selected date IF date query parameter is supplied
-  const activeTraffic = date ? allTraffic.filter(t => t.date === date) : allTraffic;
+  // STRICT DATE FILTERING: Filter active traffic ONLY for targetDate (defaults to today's date)
+  const activeTraffic = allTraffic.filter(t => t.date === targetDate);
 
   const totalLeads = allLeads.length;
   const todayLeads = allLeads.filter(l => {
