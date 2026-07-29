@@ -444,16 +444,14 @@ app.post('/api/analytics/track', async (req, res) => {
     });
     saveDB(localDb);
 
-    if (await connectMongoDB()) {
-      if (mongoose.connection && mongoose.connection.readyState >= 1) {
-        await Traffic.create({
-          path: path || '/',
-          ip,
-          device: detectedDevice,
-          date: today,
-          timestamp: new Date()
-        }).catch(() => {});
-      }
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      Traffic.create({
+        path: path || '/',
+        ip,
+        device: detectedDevice,
+        date: today,
+        timestamp: new Date()
+      }).catch(() => {});
     }
   } catch (err) {}
   
@@ -506,18 +504,16 @@ app.post('/api/leads/submit', async (req, res) => {
     }
     saveDB(localDb);
 
-    if (await connectMongoDB()) {
-      if (mongoose.connection && mongoose.connection.readyState >= 1) {
-        await Lead.findOneAndUpdate(
-          { email: normalizedEmail },
-          {
-            $set: leadObj,
-            $inc: { visitCount: 1 },
-            $push: { visitHistory: { timestamp: now, source: source || 'Instant Lead Magnet Popup' } }
-          },
-          { upsert: true, new: true }
-        ).catch(() => {});
-      }
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      Lead.findOneAndUpdate(
+        { email: normalizedEmail },
+        {
+          $set: leadObj,
+          $inc: { visitCount: 1 },
+          $push: { visitHistory: { timestamp: now, source: source || 'Instant Lead Magnet Popup' } }
+        },
+        { upsert: true, new: true }
+      ).catch(() => {});
     }
   } catch (err) {}
 
@@ -557,15 +553,13 @@ app.post('/api/whatsapp/ai-chat', async (req, res) => {
     localDb.chatLogs.unshift({ session: session || 'guest', userQuery: message, aiReply: botReply, timestamp: new Date().toISOString() });
     saveDB(localDb);
 
-    if (await connectMongoDB()) {
-      if (mongoose.connection && mongoose.connection.readyState >= 1) {
-        await ChatLog.create({
-          session: session || 'guest',
-          userQuery: message,
-          aiReply: botReply,
-          timestamp: new Date()
-        }).catch(() => {});
-      }
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      ChatLog.create({
+        session: session || 'guest',
+        userQuery: message,
+        aiReply: botReply,
+        timestamp: new Date()
+      }).catch(() => {});
     }
   } catch (err) {}
 
@@ -599,41 +593,39 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   let rawTraffic = [...(localDb.traffic || [])];
   let allLeads = [...(localDb.leads || [])];
 
-  if (await connectMongoDB()) {
-    if (mongoose.connection && mongoose.connection.readyState >= 1) {
-      try {
-        const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(5000).exec();
-        const mongoLeads = await Lead.find({}).lean().maxTimeMS(5000).exec();
-        if (mongoTraffic && mongoTraffic.length > 0) {
-          rawTraffic = mongoTraffic.map(t => ({
-            path: t.path || '/',
-            ip: t.ip || '127.0.0.1',
-            device: t.device === 'Mobile' ? 'Mobile' : 'Desktop',
-            date: t.date || getLocalDateString(new Date(t.timestamp || t.createdAt || Date.now())),
-            timestamp: new Date(t.timestamp || t.createdAt || Date.now()).toISOString()
-          }));
-          const mongoKeys = new Set(rawTraffic.map(t => `${t.path}_${t.timestamp}`));
-          (localDb.traffic || []).forEach(t => {
-            const key = `${t.path}_${t.timestamp}`;
-            if (!mongoKeys.has(key)) {
-              rawTraffic.push(t);
-            }
-          });
-        }
-        if (mongoLeads && mongoLeads.length > 0) {
-          allLeads = mongoLeads.map(l => ({
-            ...l,
-            id: l._id ? l._id.toString() : l.id
-          }));
-          const mongoEmails = new Set(allLeads.map(l => (l.email || '').toLowerCase()));
-          (localDb.leads || []).forEach(l => {
-            if (l.email && !mongoEmails.has(l.email.toLowerCase())) {
-              allLeads.push(l);
-            }
-          });
-        }
-      } catch (e) {}
-    }
+  if (mongoose.connection && mongoose.connection.readyState >= 1) {
+    try {
+      const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(800).exec();
+      const mongoLeads = await Lead.find({}).lean().maxTimeMS(800).exec();
+      if (mongoTraffic && mongoTraffic.length > 0) {
+        rawTraffic = mongoTraffic.map(t => ({
+          path: t.path || '/',
+          ip: t.ip || '127.0.0.1',
+          device: t.device === 'Mobile' ? 'Mobile' : 'Desktop',
+          date: t.date || getLocalDateString(new Date(t.timestamp || t.createdAt || Date.now())),
+          timestamp: new Date(t.timestamp || t.createdAt || Date.now()).toISOString()
+        }));
+        const mongoKeys = new Set(rawTraffic.map(t => `${t.path}_${t.timestamp}`));
+        (localDb.traffic || []).forEach(t => {
+          const key = `${t.path}_${t.timestamp}`;
+          if (!mongoKeys.has(key)) {
+            rawTraffic.push(t);
+          }
+        });
+      }
+      if (mongoLeads && mongoLeads.length > 0) {
+        allLeads = mongoLeads.map(l => ({
+          ...l,
+          id: l._id ? l._id.toString() : l.id
+        }));
+        const mongoEmails = new Set(allLeads.map(l => (l.email || '').toLowerCase()));
+        (localDb.leads || []).forEach(l => {
+          if (l.email && !mongoEmails.has(l.email.toLowerCase())) {
+            allLeads.push(l);
+          }
+        });
+      }
+    } catch (e) {}
   }
 
   // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
@@ -734,8 +726,8 @@ app.get('/api/admin/leads', authenticateAdmin, async (req, res) => {
   let leads = [...(localDb.leads || [])];
 
   try {
-    if (await connectMongoDB()) {
-      const mongoLeads = await Lead.find().sort({ lastVisitedAt: -1, createdAt: -1 }).lean().maxTimeMS(2000).catch(() => []);
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      const mongoLeads = await Lead.find().sort({ lastVisitedAt: -1, createdAt: -1 }).lean().maxTimeMS(800).catch(() => []);
       if (mongoLeads && mongoLeads.length > 0) {
         const localEmails = new Set(leads.map(l => (l.email || '').toLowerCase()));
         mongoLeads.forEach(m => {
@@ -786,8 +778,8 @@ app.patch('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
       saveDB(localDb);
     }
 
-    if (await connectMongoDB()) {
-      await Lead.findByIdAndUpdate(id, { status }, { new: true }).catch(() => {});
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      Lead.findByIdAndUpdate(id, { status }, { new: true }).catch(() => {});
     }
     res.json({ success: true, lead: { id, status } });
   } catch (err) {
@@ -805,8 +797,8 @@ app.delete('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
       saveDB(localDb);
     }
 
-    if (await connectMongoDB()) {
-      await Lead.findByIdAndDelete(id).catch(() => {});
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      Lead.findByIdAndDelete(id).catch(() => {});
     }
     res.json({ success: true, message: 'Lead deleted successfully' });
   } catch (err) {
@@ -820,8 +812,8 @@ app.get('/api/admin/chat-logs', authenticateAdmin, async (req, res) => {
   let logs = [...(localDb.chatLogs || [])];
 
   try {
-    if (await connectMongoDB()) {
-      const mongoLogs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean().maxTimeMS(2000).catch(() => []);
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
+      const mongoLogs = await ChatLog.find().sort({ timestamp: -1 }).limit(200).lean().maxTimeMS(800).catch(() => []);
       if (mongoLogs && mongoLogs.length > 0) {
         const localKeys = new Set(logs.map(l => `${l.session}_${l.userQuery}`));
         mongoLogs.forEach(m => {

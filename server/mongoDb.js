@@ -28,8 +28,8 @@ export const connectMongoDB = async () => {
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 8000,
-      connectTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000,
       maxPoolSize: 10
     }).then((m) => {
       Admin.findOne({ username: 'admin' }).then((existingAdmin) => {
@@ -59,6 +59,9 @@ export const connectMongoDB = async () => {
     return false;
   }
 };
+
+// Start background connection attempt on module load
+connectMongoDB().catch(() => {});
 
 export const isConnected = () => mongoose.connection.readyState >= 1;
 
