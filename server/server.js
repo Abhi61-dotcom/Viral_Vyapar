@@ -416,10 +416,10 @@ app.post('/api/analytics/track', async (req, res) => {
     return res.json({ success: true });
   }
 
-  // Deduplicate exact hits from same IP & path within 2.5 seconds (React StrictMode / double render protection)
+  // Deduplicate exact hits from same IP & path within 500ms (React StrictMode / double render protection)
   const cacheKey = `${ip}_${path}`;
   const now = Date.now();
-  if (recentTrackCache.has(cacheKey) && (now - recentTrackCache.get(cacheKey)) < 2500) {
+  if (recentTrackCache.has(cacheKey) && (now - recentTrackCache.get(cacheKey)) < 500) {
     return res.json({ success: true });
   }
   recentTrackCache.set(cacheKey, now);
@@ -427,7 +427,7 @@ app.post('/api/analytics/track', async (req, res) => {
   // Clean old cache entries
   if (recentTrackCache.size > 200) {
     for (const [key, time] of recentTrackCache.entries()) {
-      if (now - time > 5000) recentTrackCache.delete(key);
+      if (now - time > 3000) recentTrackCache.delete(key);
     }
   }
 
@@ -638,8 +638,14 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   const todayTraffic = allTraffic.filter(t => t.date === today).length;
   const selectedDateTraffic = allTraffic.filter(t => t.date === targetDate).length;
 
-  // STRICT DATE FILTERING: Filter active traffic ONLY for targetDate (defaults to today's date)
-  const activeTraffic = allTraffic.filter(t => t.date === targetDate);
+  // DATE FILTERING: If specific date requested, filter strictly for that date. If no date requested, use today's traffic if available, or fall back to overall traffic.
+  let activeTraffic = [];
+  if (date) {
+    activeTraffic = allTraffic.filter(t => t.date === date);
+  } else {
+    const todayHits = allTraffic.filter(t => t.date === today);
+    activeTraffic = todayHits.length > 0 ? todayHits : allTraffic;
+  }
 
   const totalLeads = allLeads.length;
   const todayLeads = allLeads.filter(l => {
