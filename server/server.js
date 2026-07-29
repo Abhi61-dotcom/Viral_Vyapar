@@ -392,7 +392,7 @@ app.post('/api/auth/verify-otp-change-password', authenticateAdmin, async (req, 
 
 const recentTrackCache = new Map();
 
-// Non-blocking Instant Analytics Tracking (<10ms) - FRONTEND ONLY
+// Analytics Tracking - FRONTEND ONLY
 app.post('/api/analytics/track', async (req, res) => {
   const { path = '/' } = req.body || {};
   const reqDevice = (req.body?.device || '').trim();
@@ -406,8 +406,6 @@ app.post('/api/analytics/track', async (req, res) => {
   const today = getLocalDateString();
   const referer = (req.headers['referer'] || req.headers['origin'] || '').toLowerCase();
 
-  res.json({ success: true }); // Return immediately to client browser
-
   // EXCLUDE Admin Panel visits completely
   const targetPath = (path || '/').toLowerCase().trim();
   if (
@@ -415,14 +413,14 @@ app.post('/api/analytics/track', async (req, res) => {
     referer.includes(':5175') ||
     referer.includes('/admin')
   ) {
-    return;
+    return res.json({ success: true });
   }
 
   // Deduplicate exact hits from same IP & path within 2.5 seconds (React StrictMode / double render protection)
   const cacheKey = `${ip}_${path}`;
   const now = Date.now();
   if (recentTrackCache.has(cacheKey) && (now - recentTrackCache.get(cacheKey)) < 2500) {
-    return;
+    return res.json({ success: true });
   }
   recentTrackCache.set(cacheKey, now);
 
@@ -433,7 +431,7 @@ app.post('/api/analytics/track', async (req, res) => {
     }
   }
 
-  // Save ONLY valid Frontend website traffic in background
+  // Save ONLY valid Frontend website traffic in database
   try {
     const localDb = loadDB();
     localDb.traffic = localDb.traffic || [];
@@ -601,7 +599,8 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   let rawTraffic = [...(localDb.traffic || [])];
   let allLeads = [...(localDb.leads || [])];
 
-  if (mongoose.connection && mongoose.connection.readyState >= 1) {
+  if (await connectMongoDB()) {
+    if (mongoose.connection && mongoose.connection.readyState >= 1) {
     try {
       const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(1000).exec();
       const mongoLeads = await Lead.find({}).lean().maxTimeMS(1000).exec();
@@ -630,6 +629,7 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       }
     } catch (e) {}
   }
+}
 
   // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
   const allTraffic = rawTraffic.filter(t => {
