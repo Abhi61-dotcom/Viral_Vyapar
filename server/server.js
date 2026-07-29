@@ -601,35 +601,40 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
 
   if (await connectMongoDB()) {
     if (mongoose.connection && mongoose.connection.readyState >= 1) {
-    try {
-      const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(1000).exec();
-      const mongoLeads = await Lead.find({}).lean().maxTimeMS(1000).exec();
-      if (mongoTraffic && mongoTraffic.length > 0) {
-        const localKeys = new Set(rawTraffic.map(t => `${t.path}_${t.timestamp}`));
-        mongoTraffic.forEach(t => {
-          const key = `${t.path}_${new Date(t.timestamp).toISOString()}`;
-          if (!localKeys.has(key)) {
-            rawTraffic.push({
-              path: t.path,
-              ip: t.ip,
-              device: t.device,
-              date: t.date || getLocalDateString(new Date(t.timestamp)),
-              timestamp: new Date(t.timestamp).toISOString()
-            });
-          }
-        });
-      }
-      if (mongoLeads && mongoLeads.length > 0) {
-        const localEmails = new Set(allLeads.map(l => (l.email || '').toLowerCase()));
-        mongoLeads.forEach(l => {
-          if (l.email && !localEmails.has(l.email.toLowerCase())) {
-            allLeads.push(l);
-          }
-        });
-      }
-    } catch (e) {}
+      try {
+        const mongoTraffic = await Traffic.find({}).lean().maxTimeMS(5000).exec();
+        const mongoLeads = await Lead.find({}).lean().maxTimeMS(5000).exec();
+        if (mongoTraffic && mongoTraffic.length > 0) {
+          rawTraffic = mongoTraffic.map(t => ({
+            path: t.path || '/',
+            ip: t.ip || '127.0.0.1',
+            device: t.device === 'Mobile' ? 'Mobile' : 'Desktop',
+            date: t.date || getLocalDateString(new Date(t.timestamp || t.createdAt || Date.now())),
+            timestamp: new Date(t.timestamp || t.createdAt || Date.now()).toISOString()
+          }));
+          const mongoKeys = new Set(rawTraffic.map(t => `${t.path}_${t.timestamp}`));
+          (localDb.traffic || []).forEach(t => {
+            const key = `${t.path}_${t.timestamp}`;
+            if (!mongoKeys.has(key)) {
+              rawTraffic.push(t);
+            }
+          });
+        }
+        if (mongoLeads && mongoLeads.length > 0) {
+          allLeads = mongoLeads.map(l => ({
+            ...l,
+            id: l._id ? l._id.toString() : l.id
+          }));
+          const mongoEmails = new Set(allLeads.map(l => (l.email || '').toLowerCase()));
+          (localDb.leads || []).forEach(l => {
+            if (l.email && !mongoEmails.has(l.email.toLowerCase())) {
+              allLeads.push(l);
+            }
+          });
+        }
+      } catch (e) {}
+    }
   }
-}
 
   // STRICT FILTER: Count ONLY Frontend public website visits (Ignore /admin or /api requests)
   const allTraffic = rawTraffic.filter(t => {
